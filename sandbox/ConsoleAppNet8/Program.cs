@@ -40,7 +40,7 @@ public class PrivateClass2
 }
 
 [GeneratePrivateProxy(typeof(PrivateClass2))]
-partial struct MyFoo
+partial struct PrivateClass2Proxy
 {
 }
 
