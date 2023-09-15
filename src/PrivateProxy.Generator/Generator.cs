@@ -23,6 +23,8 @@ public partial class Generator : IIncrementalGenerator
 
     static void EmitAttributes(IncrementalGeneratorPostInitializationContext context)
     {
+        // TODO: deny => allow
+
         context.AddSource("GeneratePrivateProxyAttribute.cs", """
 using System;
 using System.Collections.Generic;
@@ -133,6 +135,7 @@ namespace PrivateProxy
 
     static MetaMember[] GetMembers(INamedTypeSymbol targetType, PrivateProxyGenerateKinds kind, string[] denyList)
     {
+        // TODO: deny -> allow
         var deny = new HashSet<string>(denyList);
         var members = targetType.GetMembers();
 
@@ -148,12 +151,12 @@ namespace PrivateProxy
 
         foreach (var item in members)
         {
+            if (!item.CanBeReferencedByName) continue;
+
             // check accessibility
             switch (item.DeclaredAccessibility)
             {
-                case Accessibility.NotApplicable: // internal
-                    if (!generateInternal) continue;
-                    break;
+                case Accessibility.NotApplicable: // private
                 case Accessibility.Private:
                     if (!generatePrivate) continue;
                     break;
@@ -180,7 +183,7 @@ namespace PrivateProxy
             if (deny.Contains(item.Name)) continue;
 
             // add field/property/method
-            if (generateField && item is IFieldSymbol)
+            if (generateField && item is IFieldSymbol f)
             {
                 list.Add(new(item));
             }
@@ -217,6 +220,8 @@ namespace PrivateProxy
         var code = new StringBuilder();
 
         // TODO: struct or class?
+        // TODO: implicit convert
+        // TODO: ref struct
         code.AppendLine($$"""
 partial struct {{proxyType.Name}}
 {
@@ -236,6 +241,8 @@ partial struct {{proxyType.Name}}
                 // TODO: public
             }
 
+            // TODO: reflection fallback
+
             if (item.IsStatic)
             {
                 // TODO: static
@@ -248,18 +255,50 @@ partial struct {{proxyType.Name}}
                     code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "{{item.Name}}")]
     static extern ref {{item.MemberTypeFullName}} __{{item.Name}}__({{targetTypeFullName}} target);
-    public ref {{item.MemberTypeFullName}} {{item.Name}} => ref __{{item.Name}}__(target);
+
+    public ref {{item.MemberTypeFullName}} {{item.Name}} => ref __{{item.Name}}__(this.target);
 
 """);
                     break;
                 case MemberKind.Property:
+                    // TODO: get, set, ref property?
+                    code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_{{item.Name}}")]
+    static extern {{item.MemberTypeFullName}} __get_{{item.Name}}__({{targetTypeFullName}} target);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "set_{{item.Name}}")]
+    static extern void __set_{{item.Name}}__({{targetTypeFullName}} target, {{item.MemberTypeFullName}} value);
+
+    public {{item.MemberTypeFullName}} {{item.Name}}
+    {
+        get => __get_{{item.Name}}__(this.target);
+        set => __set_{{item.Name}}__(this.target, value);
+    }
+
+""");
+
                     break;
                 case MemberKind.Method:
+                    // TODO: ref method?
+                    var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
+                    var parametersWithComma = (parameters != "") ? ", " + parameters : "";
+                    var parametersOnlyName = string.Join(", ", item.MethodParameters.Select(x => x.Name));
+                    if (parametersOnlyName != "") parametersOnlyName = ", " + parametersOnlyName;
+
+                    code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "{{item.Name}}")]
+    static extern {{item.MemberTypeFullName}} __{{item.Name}}__({{targetTypeFullName}} target{{parametersWithComma}});
+    
+    public {{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => __{{item.Name}}__(this.target{{parametersOnlyName}});
+
+""");
                     break;
                 default:
                     break;
             }
         }
+
+        // TODO: AsPrivateProxy extension method
 
         code.AppendLine("""
 }
