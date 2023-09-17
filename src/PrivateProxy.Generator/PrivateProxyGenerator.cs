@@ -7,7 +7,7 @@ using static PrivateProxy.Generator.EmitHelper;
 namespace PrivateProxy.Generator;
 
 [Generator(LanguageNames.CSharp)]
-public partial class Generator : IIncrementalGenerator
+public partial class PrivateProxyGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -32,39 +32,35 @@ using System.Collections.Generic;
 namespace PrivateProxy
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
-    public class GeneratePrivateProxyAttribute : Attribute
+    internal sealed class GeneratePrivateProxyAttribute : Attribute
     {
         public Type Target { get; } 
-        public PrivateProxyGenerateKinds generateKinds { get; }
+        public PrivateProxyGenerateKinds GenerateKinds { get; }
         public IReadOnlyList<string> DenyList { get; }
 
         public GeneratePrivateProxyAttribute(Type target)
         {
             this.Target = target;
-            this.generateKinds = PrivateProxyGenerateKinds.All;
+            this.GenerateKinds = PrivateProxyGenerateKinds.All;
             this.DenyList = Array.Empty<string>();
         }
 
-        public GeneratePrivateProxyAttribute(Type target, PrivateProxyGenerateKinds generateKinds, params string[] deny)
+        public GeneratePrivateProxyAttribute(Type target, PrivateProxyGenerateKinds generateKinds, params string[] denyList)
         {
             this.Target = target;
-            this.generateKinds = generateKinds;
-            this.DenyList = deny;
+            this.GenerateKinds = generateKinds;
+            this.DenyList = denyList;
         }
     }
 
     [Flags]
-    public enum PrivateProxyGenerateKinds
+    internal enum PrivateProxyGenerateKinds
     {
         None = 0,
-        Public = 1,
-        Private = 2,
-        Protected = 4,
-        Internal = 8,
-        Field = 16,
-        Method = 32,
-        Property = 64,
-        All = Public | Private | Protected | Internal | Field | Method | Property
+        Field = 1,
+        Method = 2,
+        Property = 4,
+        All = Field | Method | Property
     }
 }
 """);
@@ -74,14 +70,10 @@ namespace PrivateProxy
     public enum PrivateProxyGenerateKinds
     {
         None = 0,
-        Public = 1,
-        Private = 2,
-        Protected = 4,
-        Internal = 8,
-        Field = 16,
-        Method = 32,
-        Property = 64,
-        All = Public | Private | Protected | Internal | Field | Method | Property
+        Field = 1,
+        Method = 2,
+        Property = 4,
+        All = Field | Method | Property
     }
 
     static void Emit(SourceProductionContext context, GeneratorAttributeSyntaxContext source)
@@ -102,7 +94,7 @@ namespace PrivateProxy
         }
 
         //// Generate Code
-        var code = EmitCode(source.TargetSymbol, targetType, members);
+        var code = EmitCode((ITypeSymbol)source.TargetSymbol, targetType, members);
         AddSource(context, source.TargetSymbol, code);
     }
 
@@ -144,40 +136,10 @@ namespace PrivateProxy
         var generateField = kind.HasFlag(PrivateProxyGenerateKinds.Field);
         var generateProperty = kind.HasFlag(PrivateProxyGenerateKinds.Property);
         var generateMethod = kind.HasFlag(PrivateProxyGenerateKinds.Method);
-        var generatePublic = kind.HasFlag(PrivateProxyGenerateKinds.Public);
-        var generatePrivate = kind.HasFlag(PrivateProxyGenerateKinds.Private);
-        var generateInternal = kind.HasFlag(PrivateProxyGenerateKinds.Internal);
-        var generateProtected = kind.HasFlag(PrivateProxyGenerateKinds.Protected);
 
         foreach (var item in members)
         {
             if (!item.CanBeReferencedByName) continue;
-
-            // check accessibility
-            switch (item.DeclaredAccessibility)
-            {
-                case Accessibility.NotApplicable: // private
-                case Accessibility.Private:
-                    if (!generatePrivate) continue;
-                    break;
-                case Accessibility.Protected:
-                    if (!generateProtected) continue;
-                    break;
-                case Accessibility.Internal:
-                    if (!generateInternal) continue;
-                    break;
-                case Accessibility.Public:
-                    if (!generatePublic) continue;
-                    break;
-                case Accessibility.ProtectedAndInternal:
-                    if (!(generateProtected && generateInternal)) continue;
-                    break;
-                case Accessibility.ProtectedOrInternal:
-                    if (!(generateProtected || generateInternal)) continue;
-                    break;
-                default:
-                    break;
-            }
 
             // check deny
             if (deny.Contains(item.Name)) continue;
@@ -185,14 +147,17 @@ namespace PrivateProxy
             // add field/property/method
             if (generateField && item is IFieldSymbol f)
             {
+                if (item.DeclaredAccessibility == Accessibility.Public) continue;
                 list.Add(new(item));
             }
             else if (generateProperty && item is IPropertySymbol)
             {
+                // TODO: check method accessibility
                 list.Add(new(item));
             }
             else if (generateMethod && item is IMethodSymbol)
             {
+                if (item.DeclaredAccessibility == Accessibility.Public) continue;
                 list.Add(new(item));
             }
         }
@@ -211,36 +176,44 @@ namespace PrivateProxy
             hasError = true;
         }
 
+        // TODO: not allow readonly struct
+        // TODO:target is ref struct ,must be ref struct.
+        // TODO:target is struct and return ref
+
         return !hasError;
     }
 
-    static string EmitCode(ISymbol proxyType, INamedTypeSymbol targetType, MetaMember[] members)
+    static string EmitCode(ITypeSymbol proxyType, INamedTypeSymbol targetType, MetaMember[] members)
     {
         var targetTypeFullName = targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var code = new StringBuilder();
 
-        // TODO: struct or class?
-        // TODO: implicit convert
-        // TODO: ref struct
-        code.AppendLine($$"""
-partial struct {{proxyType.Name}}
-{
-    {{targetTypeFullName}} target;
+        var accessibility = proxyType.DeclaredAccessibility.ToCode();
 
-    public {{proxyType.Name}}({{targetTypeFullName}} target)
+        var structOrClass = proxyType.IsReferenceType ? "class" : "struct";
+        var refStruct = proxyType.IsRefLikeType ? "ref " : "";
+        var refValueType = targetType.IsValueType ? "ref " : ""; // if valueType, constructor accepts ref and UnsafeAccessor needs ref
+
+        // ref field cannot have type that is ref struct
+        // https://github.com/dotnet/csharplang/issues/6149#issuecomment-1185491794
+        var refField = proxyType.IsRefLikeType && targetType.IsValueType && !targetType.IsRefLikeType ? "ref " : "";
+
+        code.AppendLine($$"""
+{{refStruct}}partial {{structOrClass}} {{proxyType.Name}}
+{
+    {{refField}}{{targetTypeFullName}} target;
+
+    public {{proxyType.Name}}({{refValueType}}{{targetTypeFullName}} target)
     {
-        this.target = target;
+        this.target = {{refField}}target;
     }
 
 """);
 
+        // TODO: check return type is not public type(it should be return object)
+
         foreach (var item in members)
         {
-            if (item.IsPublic)
-            {
-                // TODO: public
-            }
-
             // TODO: reflection fallback
 
             if (item.IsStatic)
@@ -248,48 +221,66 @@ partial struct {{proxyType.Name}}
                 // TODO: static
             }
 
+            var readonlyCode = item.IsRequireReadOnly ? "readonly " : "";
+            var refReturn = item.IsRefReturn ? "ref " : "";
+
             switch (item.MemberKind)
             {
+                // expose UnsafeAccessor directly because struct causes CS8347
+                // however can't configure readonly
                 case MemberKind.Field:
-                    // TODO: readonly
                     code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "{{item.Name}}")]
-    static extern ref {{item.MemberTypeFullName}} __{{item.Name}}__({{targetTypeFullName}} target);
-
-    public ref {{item.MemberTypeFullName}} {{item.Name}} => ref __{{item.Name}}__(this.target);
+    public static extern ref {{item.MemberTypeFullName}} {{item.Name}}({{refValueType}}{{targetTypeFullName}} target);
 
 """);
                     break;
                 case MemberKind.Property:
-                    // TODO: get, set, ref property?
-                    code.AppendLine($$"""
+                    
+                    if (item.HasGetMethod)
+                    {
+                        code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_{{item.Name}}")]
-    static extern {{item.MemberTypeFullName}} __get_{{item.Name}}__({{targetTypeFullName}} target);
-
-    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "set_{{item.Name}}")]
-    static extern void __set_{{item.Name}}__({{targetTypeFullName}} target, {{item.MemberTypeFullName}} value);
-
-    public {{item.MemberTypeFullName}} {{item.Name}}
-    {
-        get => __get_{{item.Name}}__(this.target);
-        set => __set_{{item.Name}}__(this.target, value);
-    }
+    static extern {{refReturn}}{{item.MemberTypeFullName}} __get_{{item.Name}}__({{refValueType}}{{targetTypeFullName}} target);
 
 """);
+                    }
 
+                    if (item.HasSetMethod)
+                    {
+                        code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "set_{{item.Name}}")]
+    static extern void __set_{{item.Name}}__({{refValueType}}{{targetTypeFullName}} target, {{item.MemberTypeFullName}} value);
+
+""");
+                    }
+
+                    code.AppendLine($$"""
+    public {{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}
+    {
+""");
+                    if (item.HasGetMethod)
+                    {
+                        code.AppendLine($"        get => {refReturn}__get_{item.Name}__({refValueType}this.target);");
+                    }
+                    if (item.HasSetMethod)
+                    {
+                        code.AppendLine($"        set => __set_{item.Name}__({refValueType}this.target, value);");
+                    }
+
+                    code.AppendLine("    }"); // close property
                     break;
                 case MemberKind.Method:
-                    // TODO: ref method?
-                    var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
+                    var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
                     var parametersWithComma = (parameters != "") ? ", " + parameters : "";
-                    var parametersOnlyName = string.Join(", ", item.MethodParameters.Select(x => x.Name));
+                    var parametersOnlyName = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Name}"));
                     if (parametersOnlyName != "") parametersOnlyName = ", " + parametersOnlyName;
 
                     code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "{{item.Name}}")]
-    static extern {{item.MemberTypeFullName}} __{{item.Name}}__({{targetTypeFullName}} target{{parametersWithComma}});
+    static extern {{item.MemberTypeFullName}} __{{item.Name}}__({{refValueType}}{{targetTypeFullName}} target{{parametersWithComma}});
     
-    public {{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => __{{item.Name}}__(this.target{{parametersOnlyName}});
+    public {{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => {{refReturn}}__{{item.Name}}__({{refValueType}}this.target{{parametersOnlyName}});
 
 """);
                     break;
@@ -298,9 +289,16 @@ partial struct {{proxyType.Name}}
             }
         }
 
-        // TODO: AsPrivateProxy extension method
+        code.AppendLine("}"); // close Proxy partial
 
-        code.AppendLine("""
+        code.AppendLine($$"""
+
+{{accessibility}} static class {{targetType.Name}}PrivateProxyExtensions
+{
+    public static {{proxyType.ToFullyQualifiedFormatString()}} AsPrivateProxy(this {{refValueType}}{{targetTypeFullName}} target)
+    {
+        return new {{proxyType.ToFullyQualifiedFormatString()}}({{refValueType}}target);
+    }
 }
 """);
 

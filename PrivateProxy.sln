@@ -9,9 +9,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{FB22D44B
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sandbox", "sandbox", "{7753D4E4-4967-4ED2-97CC-5B1A71B53BCD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrivateProxy.Generator", "src\PrivateProxy.Generator\PrivateProxy.Generator.csproj", "{57EEAB5C-EDFE-4186-8101-8B969A57CB6F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PrivateProxy.Generator", "src\PrivateProxy.Generator\PrivateProxy.Generator.csproj", "{57EEAB5C-EDFE-4186-8101-8B969A57CB6F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleAppNet8", "sandbox\ConsoleAppNet8\ConsoleAppNet8.csproj", "{F1349485-DCA7-4F9B-B434-DC6950988E7A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleAppNet8", "sandbox\ConsoleAppNet8\ConsoleAppNet8.csproj", "{F1349485-DCA7-4F9B-B434-DC6950988E7A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrivateProxy.Tests", "tests\PrivateProxy.Tests\PrivateProxy.Tests.csproj", "{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{F1349485-DCA7-4F9B-B434-DC6950988E7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1349485-DCA7-4F9B-B434-DC6950988E7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F1349485-DCA7-4F9B-B434-DC6950988E7A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -34,6 +40,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{57EEAB5C-EDFE-4186-8101-8B969A57CB6F} = {F2E8F22F-A91D-457A-932A-E3647B964A94}
 		{F1349485-DCA7-4F9B-B434-DC6950988E7A} = {7753D4E4-4967-4ED2-97CC-5B1A71B53BCD}
+		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C} = {FB22D44B-8937-4C9F-92A6-5A0A4190D1A2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {800D301B-C4F2-454D-87B9-BA3A404A9937}
