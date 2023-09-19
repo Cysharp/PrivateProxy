@@ -26,6 +26,7 @@ internal static class EmitHelper
                 return "";
         }
     }
+
     public static string ToParameterPrefix(this RefKind kind)
     {
         switch (kind)
@@ -33,6 +34,21 @@ internal static class EmitHelper
             case RefKind.Out: return "out ";
             case RefKind.Ref: return "ref ";
             case RefKind.In: return "in ";
+            // case RefKind.RefReadOnlyParameter: return "ref readonly ";
+            case (RefKind)4: return "ref readonly ";
+            case RefKind.None: return "";
+            default: return "";
+        }
+    }
+
+    public static string ToUseParameterPrefix(this RefKind kind)
+    {
+        switch (kind)
+        {
+            case RefKind.Out: return "out ";
+            case RefKind.Ref: return "ref ";
+            case RefKind.In: return "in ";
+            case (RefKind)4: return "in "; // ref readonly
             case RefKind.None: return "";
             default: return "";
         }

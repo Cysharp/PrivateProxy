@@ -74,4 +74,22 @@ public partial struct Proxy { }
 
         diagnostics.Should().BeEmpty();
     }
+
+    [Fact]
+    public void CheckRefKind()
+    {
+        var diagnostics = CSharpGeneratorRunner.RunGenerator("""
+using PrivateProxy;
+
+public class ClassTest
+{
+    private void RefOutInMethod(ref readonly int xyz) { }
+}
+
+[GeneratePrivateProxy(typeof(ClassTest))]
+public partial struct Proxy { }
+""");
+
+        diagnostics.Should().BeEmpty();
+    }
 }

@@ -24,7 +24,7 @@ public partial class PrivateProxyGenerator : IIncrementalGenerator
     static void EmitAttributes(IncrementalGeneratorPostInitializationContext context)
     {
         // TODO: deny => allow
-
+        // TODO: Kind, Static | Instance
         context.AddSource("GeneratePrivateProxyAttribute.cs", """
 using System;
 using System.Collections.Generic;
@@ -224,7 +224,7 @@ namespace PrivateProxy
 {{refStruct}}partial {{structOrClass}} {{proxyType.Name}}
 {
 {{If(hasStatic, $$"""
-    static {{targetTypeFullName}} ____static_instance = default;
+    static {{targetTypeFullName}} ____static_instance = default!;
 """)}}
     {{refStruct}}{{targetTypeFullName}} target;
 
@@ -244,74 +244,70 @@ namespace PrivateProxy
             var readonlyCode = item.IsRequireReadOnly ? "readonly " : "";
             var refReturn = item.IsRefReturn ? "ref " : "";
 
-            if (item.IsStatic)
+            var staticCode = item.IsStatic ? "Static" : "";
+            var staticCode2 = item.IsStatic ? "static " : "";
+            var targetInstance = item.IsStatic ? "____static_instance" : $"{refStruct}this.target";
+            switch (item.MemberKind)
             {
-
-            }
-            else
-            {
-                switch (item.MemberKind)
-                {
-                    case MemberKind.Field:
-                        code.AppendLine($$"""
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "{{item.Name}}")]
+                case MemberKind.Field:
+                    code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.{{staticCode}}Field, Name = "{{item.Name}}")]
     static extern ref {{readonlyCode}}{{item.MemberTypeFullName}} __{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target);
 
-    public ref {{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}} => ref __{{item.Name}}__({{refStruct}}target);
+    public {{staticCode2}}ref {{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}} => ref __{{item.Name}}__({{targetInstance}});
 """);
-                        break;
-                    case MemberKind.Property:
+                    break;
+                case MemberKind.Property:
 
-                        if (item.HasGetMethod)
-                        {
-                            code.AppendLine($$"""
-    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_{{item.Name}}")]
+                    if (item.HasGetMethod)
+                    {
+                        code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.{{staticCode}}Method, Name = "get_{{item.Name}}")]
     static extern {{refReturn}}{{item.MemberTypeFullName}} __get_{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target);
 
 """);
-                        }
+                    }
 
-                        if (item.HasSetMethod)
-                        {
-                            code.AppendLine($$"""
-    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "set_{{item.Name}}")]
+                    if (item.HasSetMethod)
+                    {
+                        code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.{{staticCode}}Method, Name = "set_{{item.Name}}")]
     static extern void __set_{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target, {{item.MemberTypeFullName}} value);
 
 """);
-                        }
+                    }
 
-                        code.AppendLine($$"""
-    public {{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}
+                    code.AppendLine($$"""
+    public {{staticCode2}}{{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}
     {
 """);
-                        if (item.HasGetMethod)
-                        {
-                            code.AppendLine($"        get => {refReturn}__get_{item.Name}__({refStruct}this.target);");
-                        }
-                        if (item.HasSetMethod)
-                        {
-                            code.AppendLine($"        set => __set_{item.Name}__({refStruct}this.target, value);");
-                        }
+                    if (item.HasGetMethod)
+                    {
+                        code.AppendLine($"        get => {refReturn}__get_{item.Name}__({targetInstance});");
+                    }
+                    if (item.HasSetMethod)
+                    {
+                        code.AppendLine($"        set => __set_{item.Name}__({targetInstance}, value);");
+                    }
 
-                        code.AppendLine("    }"); // close property
-                        break;
-                    case MemberKind.Method:
-                        var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
-                        var parametersWithComma = (parameters != "") ? ", " + parameters : "";
-                        var parametersOnlyName = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Name}"));
-                        if (parametersOnlyName != "") parametersOnlyName = ", " + parametersOnlyName;
+                    code.AppendLine("    }"); // close property
+                    break;
+                case MemberKind.Method:
+                    var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
+                    var parametersWithComma = (parameters != "") ? ", " + parameters : "";
+                    var useParameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToUseParameterPrefix()}{x.Name}"));
+                    if (useParameters != "") useParameters = ", " + useParameters;
 
-                        code.AppendLine($$"""
-    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "{{item.Name}}")]
+                    code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.{{staticCode}}Method, Name = "{{item.Name}}")]
     static extern {{refReturn}}{{item.MemberTypeFullName}} __{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target{{parametersWithComma}});
     
-    public {{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => {{refReturn}}__{{item.Name}}__({{refStruct}}this.target{{parametersOnlyName}});
+    public {{staticCode2}}{{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => {{refReturn}}__{{item.Name}}__({{targetInstance}}{{useParameters}});
 
 """);
-                        break;
-                    default:
-                        break;
-                }
+                    break;
+                default:
+                    break;
             }
         }
 

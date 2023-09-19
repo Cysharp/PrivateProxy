@@ -1,29 +1,24 @@
-#pragma warning disable CS0649
+﻿#pragma warning disable CS0649
 #pragma warning disable CS0169
 #pragma warning disable CS0414
 
-using Microsoft.CodeAnalysis;
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace PrivateProxy.Tests;
 
-// TODO: test inheritance
-// TODO: check explicit interface member
-// TODO: inheritance class uses new?
-// TODO: struct target allows readonly ref readonly
-// TODO: ref field for ref struct
-// TODO: required?
-// TODO: target record, record struct
-// TODO: return nested
-public class PrivateClassTarget
+public struct PrivateStructTarget
 {
     // TODO: use internal type for return or parameter(detect and should return object).
 
-    public PrivateClassTarget(int readOnlyField)
+    public PrivateStructTarget(int readOnlyField)
     {
         this.readOnlyField = readOnlyField;
         this.GetOnlyProperty = readOnlyField;
-        this._refReadOnlyGetOnlyPropertyField = readOnlyField;
+        // this._refReadOnlyGetOnlyPropertyField = readOnlyField;
     }
 
     // public(no generate)
@@ -48,10 +43,10 @@ public class PrivateClassTarget
     int _setOnlyPropertyField;
     private int SetOnlyProperty { set => _setOnlyPropertyField = value; }
 
-    int _refGetOnlyPropertyField;
+    public static int _refGetOnlyPropertyField;
     private ref int RefGetOnlyProperty => ref _refGetOnlyPropertyField;
 
-    int _refReadOnlyGetOnlyPropertyField;
+    public static int _refReadOnlyGetOnlyPropertyField;
     private ref readonly int RefReadOnlyGetOnlyProperty => ref _refReadOnlyGetOnlyPropertyField;
 
     // method
@@ -80,10 +75,10 @@ public class PrivateClassTarget
         voidMethodCalledCount = x + xyz;
     }
 
-    int _refReturnMethodField;
-    private ref int RefReturnMethod() => ref _refReturnMethodField;
+    public static int _refReturnMethodField;
+    ref int RefReturnMethod() => ref _refReturnMethodField;
 
-    int _refReadOnlyReturnMethodField;
+    public static int _refReadOnlyReturnMethodField;
     private ref readonly int RefReadOnlyReturnMethod() => ref _refReadOnlyReturnMethodField;
 
     int _refReturnMethodParameterField;
@@ -92,6 +87,10 @@ public class PrivateClassTarget
         return ref x;
     }
 
+    // TODO: static
+
+
+
     // checker
     public (int field, int readOnlyField) GetFields() => (field, readOnlyField);
     public (int property, int getOnlyProperty, int getOnlyPrivate, int setOnlyPrivate, int setOnlyProperty) GetProperties() => (Property, GetOnlyProperty, GetOnlyPrivateProperty, SetOnlyPrivateProperty, _setOnlyPropertyField);
@@ -99,80 +98,23 @@ public class PrivateClassTarget
     public (int refGetOnlyPropertyField, int _refReadOnlyGetOnlyPropertyField) GetRefProperties() => (_refGetOnlyPropertyField, _refReadOnlyGetOnlyPropertyField);
 
 
-    // static
 
-    static int staticField;
-    static readonly int staticReadOnlyField = 4444;
+    
 
-
-    static int StaticProperty { get; set; }
-    static int StaticGetOnlyProperty { get; }
-    public static int StaticGetOnlyPrivateProperty { private get; set; }
-    public static int StaticSetOnlyPrivateProperty { get; private set; }
-
-    static int _StaticsetOnlyPropertyField;
-    private static int StaticSetOnlyProperty { set => _StaticsetOnlyPropertyField = value; }
-
-    static int _StaticrefGetOnlyPropertyField;
-    private static ref int StaticRefGetOnlyProperty => ref _StaticrefGetOnlyPropertyField;
-
-    static int _StaticrefReadOnlyGetOnlyPropertyField;
-    private static ref readonly int StaticRefReadOnlyGetOnlyProperty => ref _StaticrefReadOnlyGetOnlyPropertyField;
-
-
-    public static int staticvoidMethodCalledCount;
-
-    private static void StaticVoidMethod()
-    {
-        staticvoidMethodCalledCount++;
-    }
-
-    static int StaticReturnMethod() => 10;
-
-    static int StaticParameterMethod1(int x) => x;
-
-    static int StaticParameterMethod2(int x, int y) => x + y;
-
-    static void StaticVoidParameter(int x, int y)
-    {
-        staticvoidMethodCalledCount = x + y;
-    }
-
-    static void StaticRefOutInMethod(in int x, ref int y, out int z, ref readonly int xyz)
-    {
-        y = 40;
-        z = 9999;
-        staticvoidMethodCalledCount = x + xyz;
-    }
-
-    static int _StaticrefReturnMethodField;
-    static ref int StaticRefReturnMethod() => ref _StaticrefReturnMethodField;
-
-    static int _StaticrefReadOnlyReturnMethodField;
-    static ref readonly int StaticRefReadOnlyReturnMethod() => ref _StaticrefReadOnlyReturnMethodField;
-
-    static ref int StaticRefReturnMethodParameter(ref int x)
-    {
-        return ref x;
-    }
 }
 
+[GeneratePrivateProxy(typeof(PrivateStructTarget))]
+public ref partial struct PrivateStructTargetStructProxy;
 
-#if true
-[GeneratePrivateProxy(typeof(PrivateClassTarget))]
-public partial struct PrivateClassTargetStructProxy;
 
-#else
-[GeneratePrivateProxy(typeof(PrivateClassTarget))]
-public partial class PrivateClassTargetClassProxy;
-#endif
 
-public class ClassGenerateTest
+public class StructGenerateTest
 {
     [Fact]
     public void Field()
     {
-        var target = new PrivateClassTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
+        var target = new PrivateStructTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
+        
         var proxy = target.AsPrivateProxy();
 
         proxy.field = 1000;
@@ -186,7 +128,8 @@ public class ClassGenerateTest
     [Fact]
     public void Property()
     {
-        var target = new PrivateClassTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
+        var target = new PrivateStructTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
+        PrivateStructTarget._refReadOnlyGetOnlyPropertyField = 5000;
         var proxy = target.AsPrivateProxy();
 
         proxy.Property = 9999;
@@ -222,7 +165,7 @@ public class ClassGenerateTest
     [Fact]
     public void Method()
     {
-        var target = new PrivateClassTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
+        var target = new PrivateStructTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
         var proxy = target.AsPrivateProxy();
 
         proxy.VoidMethod();
@@ -248,9 +191,9 @@ public class ClassGenerateTest
         target.voidMethodCalledCount.Should().Be(30); // x + xyz
 
         proxy.RefReturnMethod() = 1111;
-        proxy._refReturnMethodField.Should().Be(1111);
+        PrivateStructTarget._refReturnMethodField.Should().Be(1111);
 
-        proxy._refReadOnlyReturnMethodField = 99999;
+        PrivateStructTarget._refReadOnlyReturnMethodField = 99999;
         proxy.RefReadOnlyReturnMethod().Should().Be(99999);
 
         var zzzzz = 999;
@@ -263,9 +206,7 @@ public class ClassGenerateTest
     [Fact]
     public void StaticField()
     {
-        PrivateClassTargetStructProxy.staticField = 9999;
-        PrivateClassTargetStructProxy.staticField.Should().Be(9999);
-        PrivateClassTargetStructProxy.staticReadOnlyField.Should().Be(4444);
+        // TODO:
     }
 
     [Fact]
