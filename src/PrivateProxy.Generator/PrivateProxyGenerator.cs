@@ -150,9 +150,24 @@ namespace PrivateProxy
                 if (item.DeclaredAccessibility == Accessibility.Public) continue;
                 list.Add(new(item));
             }
-            else if (generateProperty && item is IPropertySymbol)
+            else if (generateProperty && item is IPropertySymbol p)
             {
-                // TODO: check method accessibility
+                if (item.DeclaredAccessibility == Accessibility.Public)
+                {
+                    var getPublic = true;
+                    var setPublic = true;
+                    if (p.GetMethod != null)
+                    {
+                        getPublic = p.GetMethod.DeclaredAccessibility == Accessibility.Public;
+                    }
+                    if (p.SetMethod != null)
+                    {
+                        setPublic = p.SetMethod.DeclaredAccessibility == Accessibility.Public;
+                    }
+
+                    if (getPublic && setPublic) continue;
+                }
+
                 list.Add(new(item));
             }
             else if (generateMethod && item is IMethodSymbol)
@@ -176,7 +191,18 @@ namespace PrivateProxy
             hasError = true;
         }
 
+        // TODO: rule
+        // ProxyClass: class -> allows class or struct
+        //           : struct -> allows ref struct
+        // target Type can not be `ref struct`
+
+        //var structOrClass = proxyType.IsReferenceType ? "class" : "struct";
+        //var refStruct = proxyType.IsRefLikeType ? "ref " : "";
+        //var refValueType = targetType.IsValueType ? "ref " : ""; // if valueType, constructor accepts ref and UnsafeAccessor needs ref
+
         // TODO: not allow readonly struct
+
+        // TODO: struct always must be `ref struct`
         // TODO:target is ref struct ,must be ref struct.
         // TODO:target is struct and return ref
 
@@ -189,23 +215,22 @@ namespace PrivateProxy
         var code = new StringBuilder();
 
         var accessibility = proxyType.DeclaredAccessibility.ToCode();
-
         var structOrClass = proxyType.IsReferenceType ? "class" : "struct";
         var refStruct = proxyType.IsRefLikeType ? "ref " : "";
-        var refValueType = targetType.IsValueType ? "ref " : ""; // if valueType, constructor accepts ref and UnsafeAccessor needs ref
 
-        // ref field cannot have type that is ref struct
-        // https://github.com/dotnet/csharplang/issues/6149#issuecomment-1185491794
-        var refField = proxyType.IsRefLikeType && targetType.IsValueType && !targetType.IsRefLikeType ? "ref " : "";
+        var hasStatic = members.Any(x => x.IsStatic);
 
         code.AppendLine($$"""
 {{refStruct}}partial {{structOrClass}} {{proxyType.Name}}
 {
-    {{refField}}{{targetTypeFullName}} target;
+{{If(hasStatic, $$"""
+    static {{targetTypeFullName}} ____static_instance = default;
+""")}}
+    {{refStruct}}{{targetTypeFullName}} target;
 
-    public {{proxyType.Name}}({{refValueType}}{{targetTypeFullName}} target)
+    public {{proxyType.Name}}({{refStruct}}{{targetTypeFullName}} target)
     {
-        this.target = {{refField}}target;
+        this.target = {{refStruct}}target;
     }
 
 """);
@@ -216,76 +241,77 @@ namespace PrivateProxy
         {
             // TODO: reflection fallback
 
-            if (item.IsStatic)
-            {
-                // TODO: static
-            }
-
             var readonlyCode = item.IsRequireReadOnly ? "readonly " : "";
             var refReturn = item.IsRefReturn ? "ref " : "";
 
-            switch (item.MemberKind)
+            if (item.IsStatic)
             {
-                // expose UnsafeAccessor directly because struct causes CS8347
-                // however can't configure readonly
-                case MemberKind.Field:
-                    code.AppendLine($$"""
+
+            }
+            else
+            {
+                switch (item.MemberKind)
+                {
+                    case MemberKind.Field:
+                        code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "{{item.Name}}")]
-    public static extern ref {{item.MemberTypeFullName}} {{item.Name}}({{refValueType}}{{targetTypeFullName}} target);
+    static extern ref {{readonlyCode}}{{item.MemberTypeFullName}} __{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target);
 
+    public ref {{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}} => ref __{{item.Name}}__({{refStruct}}target);
 """);
-                    break;
-                case MemberKind.Property:
-                    
-                    if (item.HasGetMethod)
-                    {
-                        code.AppendLine($$"""
+                        break;
+                    case MemberKind.Property:
+
+                        if (item.HasGetMethod)
+                        {
+                            code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_{{item.Name}}")]
-    static extern {{refReturn}}{{item.MemberTypeFullName}} __get_{{item.Name}}__({{refValueType}}{{targetTypeFullName}} target);
+    static extern {{refReturn}}{{item.MemberTypeFullName}} __get_{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target);
 
 """);
-                    }
+                        }
 
-                    if (item.HasSetMethod)
-                    {
-                        code.AppendLine($$"""
+                        if (item.HasSetMethod)
+                        {
+                            code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "set_{{item.Name}}")]
-    static extern void __set_{{item.Name}}__({{refValueType}}{{targetTypeFullName}} target, {{item.MemberTypeFullName}} value);
+    static extern void __set_{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target, {{item.MemberTypeFullName}} value);
 
 """);
-                    }
+                        }
 
-                    code.AppendLine($$"""
+                        code.AppendLine($$"""
     public {{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}
     {
 """);
-                    if (item.HasGetMethod)
-                    {
-                        code.AppendLine($"        get => {refReturn}__get_{item.Name}__({refValueType}this.target);");
-                    }
-                    if (item.HasSetMethod)
-                    {
-                        code.AppendLine($"        set => __set_{item.Name}__({refValueType}this.target, value);");
-                    }
+                        if (item.HasGetMethod)
+                        {
+                            code.AppendLine($"        get => {refReturn}__get_{item.Name}__({refStruct}this.target);");
+                        }
+                        if (item.HasSetMethod)
+                        {
+                            code.AppendLine($"        set => __set_{item.Name}__({refStruct}this.target, value);");
+                        }
 
-                    code.AppendLine("    }"); // close property
-                    break;
-                case MemberKind.Method:
-                    var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
-                    var parametersWithComma = (parameters != "") ? ", " + parameters : "";
-                    var parametersOnlyName = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Name}"));
-                    if (parametersOnlyName != "") parametersOnlyName = ", " + parametersOnlyName;
+                        code.AppendLine("    }"); // close property
+                        break;
+                    case MemberKind.Method:
+                        var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
+                        var parametersWithComma = (parameters != "") ? ", " + parameters : "";
+                        var parametersOnlyName = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Name}"));
+                        if (parametersOnlyName != "") parametersOnlyName = ", " + parametersOnlyName;
 
-                    code.AppendLine($$"""
+                        code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "{{item.Name}}")]
-    static extern {{item.MemberTypeFullName}} __{{item.Name}}__({{refValueType}}{{targetTypeFullName}} target{{parametersWithComma}});
+    static extern {{refReturn}}{{item.MemberTypeFullName}} __{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target{{parametersWithComma}});
     
-    public {{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => {{refReturn}}__{{item.Name}}__({{refValueType}}this.target{{parametersOnlyName}});
+    public {{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => {{refReturn}}__{{item.Name}}__({{refStruct}}this.target{{parametersOnlyName}});
 
 """);
-                    break;
-                default:
-                    break;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
@@ -295,9 +321,9 @@ namespace PrivateProxy
 
 {{accessibility}} static class {{targetType.Name}}PrivateProxyExtensions
 {
-    public static {{proxyType.ToFullyQualifiedFormatString()}} AsPrivateProxy(this {{refValueType}}{{targetTypeFullName}} target)
+    public static {{proxyType.ToFullyQualifiedFormatString()}} AsPrivateProxy(this {{refStruct}}{{targetTypeFullName}} target)
     {
-        return new {{proxyType.ToFullyQualifiedFormatString()}}({{refValueType}}target);
+        return new {{proxyType.ToFullyQualifiedFormatString()}}({{refStruct}}target);
     }
 }
 """);

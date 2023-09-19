@@ -1,5 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-// using PrivateProxy;
+﻿// using PrivateProxy;
 using PrivateProxy;
 using System;
 using System.Collections.Generic;
@@ -8,17 +7,12 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 
+var a = default(MyClass);
+var x = UnsafeAccessorTest3(a, 10, 20);
 
 
 
-
-var mc = new MyClass();
-
-ref readonly var hogehoge = ref mc.RetField();
-
-// hogehoge = 1000;
-
-// readonly var tako = 10;
+Console.WriteLine(x);
 
 
 static void Bar(ref int x, out int y, in int z)
@@ -33,16 +27,18 @@ static void Foo(ref int x, out int y, in int z)
 }
 
 [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "field")]
-static extern ref int UnsafeAccessorTest(ref global::RefStructTest target);
+static extern ref int UnsafeAccessorTest(ref global::StructTest target);
 
 [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "field")]
 static extern ref int UnsafeAccessorTest2(global::MyClass target);
 
-[UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_MyProperty")]
-static extern int UnsafeAccessorTest3(ref global::Hoge target);
+[UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "TakoyakiX")]
+static extern int UnsafeAccessorTest3(in global::MyClass target, int x, int y);
 
 public partial struct Hoge
 {
+    static Hoge ____default__ = default(Hoge);
+
     public void Tako() { }
 
     public int MyProperty { get; set; }
@@ -55,15 +51,21 @@ public partial struct Hoge
         {
         }
     }
-}
 
-partial struct Hoge
-{
-    public void HogeHoge()
+
+    [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "TakoyakiX")]
+    static extern int UnsafeAccessorTest3(ref global::Hoge target, int x, int y);
+
+    public static int CallTakoyakiX(int x, int y) => UnsafeAccessorTest3(ref ____default__, x, y);
+
+    static int TakoyakiX(int x, int y)
     {
-        this.Tako();
+        return x + y;
     }
 }
+
+
+
 
 public class MyClass
 {
@@ -78,29 +80,88 @@ public class MyClass
 
 
     public ref readonly int RetField() => ref field;
-}
 
-public static class ExtensionsCheck
-{
-    public static void Foo(this ref Hoge hoge)
+
+    static int TakoyakiX(int x, int y)
     {
+        return x + y;
     }
 }
 
-public ref struct RefStructTest
+
+public static class ExtTest
 {
-    public RefStructTest(ref int xxx)
+    public static MyClassProxy AsProxy2(this  MyClass mc)
     {
-        this.refReadOnly = ref xxx;
+        return new MyClassProxy( mc);
     }
+}
+
+
+//public ref struct MyClass
+//{
+
+//}
+
+ ref partial struct Tako
+{
+}
+
+public  struct MyClassProxy
+{
+     MyClass target;
+
+    public MyClassProxy( MyClass target)
+    {
+        this.target =  target;
+    }
+}
+
+
+public struct TestRef
+{
+}
+
+public ref struct TestRefRef
+{
+    ref TestRef target;
+
+    public TestRefRef(ref TestRef target)
+    {
+        this.target = ref target;
+    }
+
+
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "field")]
+    static extern ref int __field__(ref global::TestRef target);
+
+    public ref int field => ref __field__(ref target);
+
+    public int field2
+    {
+        get => __field__(ref target);
+        set => __field__(ref target) = value;
+    }
+
+}
+
+
+
+public struct StructTest
+{
+    //public StructTest(ref int xxx)
+    //{
+        //this.refReadOnly = ref xxx;
+    //}
 
     // Roslyn IFieldSymbol behaviour
     public int field;                                     // RefKind=None
     public readonly int readOnlyField;                    // RefKind=None, IsReadOnly=true | can't assign
-    public ref int refField;                              // RefKind=Ref
-    public ref readonly int refReadOnly;                  // RefKind=In | can't assign
-    public readonly ref int readonlyRef;                  // RefKind=Ref, IsReadOnly=true
-    public readonly ref readonly int readOnlyRefReadOnly; // RefKind=In, IsReadOnly=true | can't assign
+    //public ref int refField;                              // RefKind=Ref
+    //public ref readonly int refReadOnly;                  // RefKind=In | can't assign
+    //public readonly ref int readonlyRef;                  // RefKind=Ref, IsReadOnly=true
+    //public readonly ref readonly int readOnlyRefReadOnly; // RefKind=In, IsReadOnly=true | can't assign
 
 
 
@@ -125,23 +186,44 @@ public ref struct RefStructTest
     {
         Console.WriteLine(field);
     }
-}
 
-public ref partial struct RefStructTestProxy2
-{
-    RefStructTest target;
-
-    public RefStructTestProxy2(ref RefStructTest test)
+    static void HogeMogeDayo()
     {
-        // this.target = MemoryMarshal.GetReference(test;
     }
-
 }
 
+//public ref partial struct RefStructTestProxy2
+//{
+//    RefStructTest target;
+
+//    public RefStructTestProxy2(ref RefStructTest target)
+//    {
+//        this.target = target;
+//    }
+
+//    static global::RefStructTest ____static_instance => default;
+
+//    public RefStructTestProxy2(ref RefStructTest test)
+//    {
+//        // this.target = MemoryMarshal.GetReference(test;
+//    }
 
 
-[GeneratePrivateProxy(typeof(RefStructTest))]
-public ref partial struct RefStructTestProxy;
+//    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "HogeMogeDayo")]
+//    static extern void __HogeMogeDayo__(in global::RefStructTest target);
+
+//    public static void HogeMogeDayo()
+//    {
+//        __HogeMogeDayo__(____static_instance);
+//    }
+
+
+//}
+
+
+
+[GeneratePrivateProxy(typeof(StructTest))]
+public ref partial struct StructTestProxy;
 
 
 
@@ -218,7 +300,7 @@ public class PrivateClass2
         Console.WriteLine(x + y);
     }
 
-    int FooBarBaz(ref int x, out int y, in int z) => y = x + z; 
+    int FooBarBaz(ref int x, out int y, in int z) => y = x + z;
 }
 
 [GeneratePrivateProxy(typeof(PrivateClass2))]

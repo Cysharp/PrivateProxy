@@ -14,10 +14,21 @@ public class PrivateClassTarget
 {
     // TODO: use internal type for return or parameter(detect and should return object).
 
+    public PrivateClassTarget(int readOnlyField)
+    {
+        this.readOnlyField = readOnlyField;
+        this.GetOnlyProperty = readOnlyField;
+    }
+
+    // public(no generate)
+    public int publicField;
+    public int PublicProperty { get; set; }
+    public void PublicMethod() { }
+
     // field
     private int field;
-    private readonly int readOnlyField = 99999;
-    public required int requiredField;
+    private readonly int readOnlyField;
+    // public required int requiredField;
 
     // proeprty
     private int Property { get; set; }
@@ -79,45 +90,91 @@ public class PrivateClassTarget
     public (int property, int getOnlyProperty, int setOnlyProperty) GetProperties() => (Property, GetOnlyProperty, _setOnlyPropertyField);
 
 
+
+    // kesu.
+
 }
 
+
+#if true
 [GeneratePrivateProxy(typeof(PrivateClassTarget))]
-public partial struct PrivateClassTargetProxy { }
+public partial struct PrivateClassTargetStructProxy;
 
-
-public ref struct RefStruct
-{
-    public ref readonly int field1;
-    public readonly ref int field2;
-    static int xxx;
-    public readonly ref int Foo => ref xxx;
-}
+#else
+[GeneratePrivateProxy(typeof(PrivateClassTarget))]
+public partial class PrivateClassTargetClassProxy;
+#endif
 
 public class ClassGenerateTest
 {
     [Fact]
-    public void Test1()
+    public void Field()
     {
-        var target = new PrivateClassTarget() { requiredField = 0, RequiredInitProperty = 0, RequiredProperty = 0 };
+        var target = new PrivateClassTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
         var proxy = target.AsPrivateProxy();
 
-        proxy.field = 999;
-
-
-        var refS = new RefStruct();
-        //refS.field1 = 10;
-        refS.field2 = 10;
-
-        // .Property = 10;
-        // proxy.readOnlyField2 = 11;
-
-
+        proxy.field = 1000;
+        
         var (field, readOnlyField) = target.GetFields();
 
+        field.Should().Be(1000).And.Be(proxy.field);
+        readOnlyField.Should().Be(5000).And.Be(proxy.readOnlyField);
+    }
 
-        field.Should().Be(999).And.Be(proxy.field);
+    [Fact]
+    public void Property()
+    {
+        //private int Property { get; set; }
+        //private int GetOnlyProperty { get; }
+        //public int GetOnlyPrivateProperty { private get; set; }
+        //public int SetOnlyPrivateProperty { get; private set; }
+        //public required int RequiredProperty { get; set; }
+        //public int InitProperty { get; init; }
+        //public required int RequiredInitProperty { get; init; }
 
+        //int _setOnlyPropertyField;
+        //public int SetOnlyProperty { set => _setOnlyPropertyField = value; }
 
+        //int _refGetOnlyPropertyField;
+        //public ref int RefGetOnlyProperty => ref _refGetOnlyPropertyField;
 
+        //int _refReadOnlyGetOnlyPropertyField;
+        //public ref readonly int RefReadOnlyGetOnlyProperty => ref _refReadOnlyGetOnlyPropertyField;
+
+        var target = new PrivateClassTarget(5000) { RequiredInitProperty = 0, RequiredProperty = 0 };
+        var proxy = target.AsPrivateProxy();
+
+        proxy.Property = 9999;
+        proxy.GetOnlyPrivateProperty = 8888;
+        proxy.SetOnlyPrivateProperty = 7777;
+        // proxy.RequiredInitProperty
+        
+        
+        // proxy.GetOnlyProperty = 444;
+
+    }
+
+    [Fact]
+    public void Method()
+    {
+        // TODO:
+    }
+
+    [Fact]
+    public void StaticField()
+    {
+        // TODO:
+    }
+
+    [Fact]
+    public void StaticProperty()
+    {
+        // TODO:
+    }
+
+    [Fact]
+    public void StaticMethod()
+    {
+        // TODO:
     }
 }
