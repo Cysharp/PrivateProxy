@@ -1,6 +1,8 @@
 ﻿#pragma warning disable CS8604
 #pragma warning disable CS8321
 #pragma warning disable CS0414
+#pragma warning disable CS0169
+#pragma warning disable CS0649
 
 // using PrivateProxy;
 using PrivateProxy;
@@ -11,11 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 
-var a = default(MyClass);
-var x = UnsafeAccessorTest3(a, 10, 20);
-
-
-Console.WriteLine(x);
+Calle.Foo();
 
 
 static void Bar(ref int x, out int y, in int z)
