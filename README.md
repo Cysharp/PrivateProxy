@@ -6,6 +6,8 @@ Source Generator and .NET 8 [UnsafeAccessor](https://learn.microsoft.com/bs-latn
 `[GeneratePrivateProxy(typeof(TargetType))]` generates accessor proxy.
 
 ```csharp
+using PrivateProxy;
+
 public class Sample
 {
     int _field1;
@@ -61,6 +63,8 @@ Generated code is fully typed, you can access private filed via IntelliSense and
 For example, this is the mutable struct and static, ref return sample.
 
 ```csharp
+using PrivateProxy;
+
 public struct MutableStructSample
 {
     int _counter;
@@ -149,6 +153,8 @@ public class/* struct */ SupportTarget
 Proxy type can be `class` => `class` or `struct`, `struct` => `ref struct`.
 
 ```csharp
+using PrivateProxy;
+
 public class Sample;
 
 // class proxy type both supports class and struct(recommend is struct)
