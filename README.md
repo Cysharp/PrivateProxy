@@ -191,11 +191,12 @@ internal enum PrivateProxyGenerateKinds
 
 Limitation
 ---
-Currently, the following are not supported:
+Currently, the following features are not supported
 
 * Generics type, see: [dotnet/runtime#89439](https://github.com/dotnet/runtime/issues/89439)
 * ref struct
 * Types from external dll(for example `String`)
+* Non public return/parameter type(ignore generate)
 
 License
 ---
