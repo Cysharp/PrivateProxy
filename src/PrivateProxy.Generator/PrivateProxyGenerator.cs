@@ -18,13 +18,14 @@ public partial class PrivateProxyGenerator : IIncrementalGenerator
                  static (node, token) => node is StructDeclarationSyntax or ClassDeclarationSyntax,
                  static (context, token) => context);
 
+        // NOTE: currently does not provide private metadata from external dll.
+        // context.CompilationProvider.Select((x, token) => x.WithOptions(x.Options.WithMetadataImportOptions(MetadataImportOptions.All));
+
         context.RegisterSourceOutput(source, Emit);
     }
 
     static void EmitAttributes(IncrementalGeneratorPostInitializationContext context)
     {
-        // TODO: deny => allow
-        // TODO: Kind, Static | Instance
         context.AddSource("GeneratePrivateProxyAttribute.cs", """
 using System;
 using System.Collections.Generic;
@@ -36,31 +37,29 @@ namespace PrivateProxy
     {
         public Type Target { get; } 
         public PrivateProxyGenerateKinds GenerateKinds { get; }
-        public IReadOnlyList<string> DenyList { get; }
 
         public GeneratePrivateProxyAttribute(Type target)
         {
             this.Target = target;
             this.GenerateKinds = PrivateProxyGenerateKinds.All;
-            this.DenyList = Array.Empty<string>();
         }
 
-        public GeneratePrivateProxyAttribute(Type target, PrivateProxyGenerateKinds generateKinds, params string[] denyList)
+        public GeneratePrivateProxyAttribute(Type target, PrivateProxyGenerateKinds generateKinds)
         {
             this.Target = target;
             this.GenerateKinds = generateKinds;
-            this.DenyList = denyList;
         }
     }
 
     [Flags]
     internal enum PrivateProxyGenerateKinds
     {
-        None = 0,
+        All = 0, // Field | Method | Property | Instance | Static
         Field = 1,
         Method = 2,
         Property = 4,
-        All = Field | Method | Property
+        Instance = 8,
+        Static = 16,
     }
 }
 """);
@@ -69,11 +68,12 @@ namespace PrivateProxy
     [Flags]
     public enum PrivateProxyGenerateKinds
     {
-        None = 0,
+        All = 0, // Field | Method | Property | Instance | Static
         Field = 1,
         Method = 2,
         Property = 4,
-        All = Field | Method | Property
+        Instance = 8,
+        Static = 16,
     }
 
     static void Emit(SourceProductionContext context, GeneratorAttributeSyntaxContext source)
@@ -84,9 +84,9 @@ namespace PrivateProxy
         }
 
         var attr = source.Attributes[0]; // allowMultiple:false
-        GetAttributeParameters(attr, out var targetType, out var kind, out var denyList);
+        GetAttributeParameters(attr, out var targetType, out var kind);
 
-        var members = GetMembers(targetType, kind, denyList);
+        var members = GetMembers(targetType, kind);
 
         if (members.Length == 0)
         {
@@ -98,61 +98,72 @@ namespace PrivateProxy
         AddSource(context, source.TargetSymbol, code);
     }
 
-    static void GetAttributeParameters(AttributeData attr, out INamedTypeSymbol targetType, out PrivateProxyGenerateKinds kind, out string[] denyList)
+    static void GetAttributeParameters(AttributeData attr, out INamedTypeSymbol targetType, out PrivateProxyGenerateKinds kind)
     {
         // Extract attribute parameter
         // public GeneratePrivateProxyAttribute(Type target)
-        // public GeneratePrivateProxyAttribute(Type target, PrivateProxyGenerateKinds generateKinds, params string[] deny)
+        // public GeneratePrivateProxyAttribute(Type target, PrivateProxyGenerateKinds generateKinds)
 
         targetType = (INamedTypeSymbol)attr.ConstructorArguments[0].Value!;
 
         if (attr.ConstructorArguments.Length == 1)
         {
             kind = PrivateProxyGenerateKinds.All;
-            denyList = [];
-            return;
-        }
-
-        kind = (PrivateProxyGenerateKinds)attr.ConstructorArguments[1].Value!;
-
-        if (attr.ConstructorArguments.Length == 2)
-        {
-            denyList = attr.ConstructorArguments[2].Values.Select(x => (string)x.Value!).ToArray();
         }
         else
         {
-            denyList = [];
+            kind = (PrivateProxyGenerateKinds)attr.ConstructorArguments[1].Value!;
         }
     }
 
-    static MetaMember[] GetMembers(INamedTypeSymbol targetType, PrivateProxyGenerateKinds kind, string[] denyList)
+    static MetaMember[] GetMembers(INamedTypeSymbol targetType, PrivateProxyGenerateKinds kind)
     {
-        // TODO: deny -> allow
-        var deny = new HashSet<string>(denyList);
         var members = targetType.GetMembers();
 
         var list = new List<MetaMember>(members.Length);
 
+        kind = (kind == PrivateProxyGenerateKinds.All) ? PrivateProxyGenerateKinds.Field | PrivateProxyGenerateKinds.Method | PrivateProxyGenerateKinds.Property | PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Static : kind;
+
         var generateField = kind.HasFlag(PrivateProxyGenerateKinds.Field);
         var generateProperty = kind.HasFlag(PrivateProxyGenerateKinds.Property);
         var generateMethod = kind.HasFlag(PrivateProxyGenerateKinds.Method);
+        var generateInstance = kind.HasFlag(PrivateProxyGenerateKinds.Instance);
+        var generateStatic = kind.HasFlag(PrivateProxyGenerateKinds.Static);
+
+        // If only set Static or Instance, generate all member kind
+        if (!generateField && !generateProperty && !generateMethod)
+        {
+            generateField = generateProperty = generateMethod = true;
+        }
+        // If only set member kind, generate both static and instance
+        if (!generateStatic && !generateInstance)
+        {
+            generateStatic = generateInstance = true;
+        }
 
         foreach (var item in members)
         {
             if (!item.CanBeReferencedByName) continue;
 
-            // check deny
-            if (deny.Contains(item.Name)) continue;
+            if (item.IsStatic && !generateStatic) continue;
+            if (!item.IsStatic && !generateInstance) continue;
 
             // add field/property/method
             if (generateField && item is IFieldSymbol f)
             {
-                if (item.DeclaredAccessibility == Accessibility.Public) continue;
+                // return type is not public, don't generate
+                if (f.Type.DeclaredAccessibility != Accessibility.Public) continue;
+
+                // public member don't generate
+                if (f.DeclaredAccessibility == Accessibility.Public) continue;
+
                 list.Add(new(item));
             }
             else if (generateProperty && item is IPropertySymbol p)
             {
-                if (item.DeclaredAccessibility == Accessibility.Public)
+                if (p.Type.DeclaredAccessibility != Accessibility.Public) continue;
+
+                if (p.DeclaredAccessibility == Accessibility.Public)
                 {
                     var getPublic = true;
                     var setPublic = true;
@@ -170,9 +181,16 @@ namespace PrivateProxy
 
                 list.Add(new(item));
             }
-            else if (generateMethod && item is IMethodSymbol)
+            else if (generateMethod && item is IMethodSymbol m)
             {
-                if (item.DeclaredAccessibility == Accessibility.Public) continue;
+                // both return type and parameter type must be public
+                if (m.ReturnType.DeclaredAccessibility != Accessibility.Public) continue;
+                foreach (var parameter in m.Parameters)
+                {
+                    if (parameter.Type.DeclaredAccessibility != Accessibility.Public) continue;
+                }
+
+                if (m.DeclaredAccessibility == Accessibility.Public) continue;
                 list.Add(new(item));
             }
         }
@@ -196,15 +214,11 @@ namespace PrivateProxy
         //           : struct -> allows ref struct
         // target Type can not be `ref struct`
 
-        //var structOrClass = proxyType.IsReferenceType ? "class" : "struct";
-        //var refStruct = proxyType.IsRefLikeType ? "ref " : "";
-        //var refValueType = targetType.IsValueType ? "ref " : ""; // if valueType, constructor accepts ref and UnsafeAccessor needs ref
-
         // TODO: not allow readonly struct
-
         // TODO: struct always must be `ref struct`
         // TODO:target is ref struct ,must be ref struct.
         // TODO:target is struct and return ref
+        // TODO:generics don't support
 
         return !hasError;
     }
@@ -235,18 +249,14 @@ namespace PrivateProxy
 
 """);
 
-        // TODO: check return type is not public type(it should be return object)
-
         foreach (var item in members)
         {
-            // TODO: reflection fallback
-
             var readonlyCode = item.IsRequireReadOnly ? "readonly " : "";
             var refReturn = item.IsRefReturn ? "ref " : "";
 
             var staticCode = item.IsStatic ? "Static" : "";
             var staticCode2 = item.IsStatic ? "static " : "";
-            var targetInstance = item.IsStatic ? "____static_instance" : $"{refStruct}this.target";
+            var targetInstance = item.IsStatic ? $"{refStruct}____static_instance" : $"{refStruct}this.target";
             switch (item.MemberKind)
             {
                 case MemberKind.Field:

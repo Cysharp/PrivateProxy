@@ -56,4 +56,25 @@ public static class CSharpGeneratorRunner
         var compilationDiagnostics = newCompilation.GetDiagnostics();
         return diagnostics.Concat(compilationDiagnostics).Where(x => x.Severity == DiagnosticSeverity.Error).ToArray();
     }
+
+    public static (string FilePath, string Code)[] RunGeneratorCode(string source, string[]? preprocessorSymbols = null, AnalyzerConfigOptionsProvider? options = null)
+    {
+        if (preprocessorSymbols == null)
+        {
+            preprocessorSymbols = new[] { "NET8_0_OR_GREATER" };
+        }
+        var parseOptions = new CSharpParseOptions(LanguageVersion.CSharp11, preprocessorSymbols: preprocessorSymbols);
+
+        var driver = CSharpGeneratorDriver.Create(new PrivateProxyGenerator()).WithUpdatedParseOptions(parseOptions);
+        if (options != null)
+        {
+            driver = (Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver)driver.WithUpdatedAnalyzerConfigOptions(options);
+        }
+
+        var compilation = baseCompilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(source, parseOptions));
+
+        driver.RunGeneratorsAndUpdateCompilation(compilation, out var newCompilation, out var diagnostics);
+
+        return newCompilation.SyntaxTrees.Select(x => (x.FilePath, x.ToString())).ToArray();
+    }
 }

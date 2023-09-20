@@ -11,7 +11,6 @@ var a = default(MyClass);
 var x = UnsafeAccessorTest3(a, 10, 20);
 
 
-
 Console.WriteLine(x);
 
 
@@ -25,6 +24,9 @@ static void Foo(ref int x, out int y, in int z)
 {
     y = 10;
 }
+
+
+
 
 [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "field")]
 static extern ref int UnsafeAccessorTest(ref global::StructTest target);
@@ -65,6 +67,8 @@ public partial struct Hoge
 }
 
 
+[GeneratePrivateProxy(typeof(ClassLibrary.MyClass))]
+public partial struct ClassLibraryMyClassProxy;
 
 
 public class MyClass
@@ -91,9 +95,9 @@ public class MyClass
 
 public static class ExtTest
 {
-    public static MyClassProxy AsProxy2(this  MyClass mc)
+    public static MyClassProxy AsProxy2(this MyClass mc)
     {
-        return new MyClassProxy( mc);
+        return new MyClassProxy(mc);
     }
 }
 
@@ -103,17 +107,17 @@ public static class ExtTest
 
 //}
 
- ref partial struct Tako
+ref partial struct Tako
 {
 }
 
-public  struct MyClassProxy
+public struct MyClassProxy
 {
-     MyClass target;
+    MyClass target;
 
-    public MyClassProxy( MyClass target)
+    public MyClassProxy(MyClass target)
     {
-        this.target =  target;
+        this.target = target;
     }
 }
 
@@ -152,7 +156,7 @@ public struct StructTest
 {
     //public StructTest(ref int xxx)
     //{
-        //this.refReadOnly = ref xxx;
+    //this.refReadOnly = ref xxx;
     //}
 
     // Roslyn IFieldSymbol behaviour
@@ -219,6 +223,7 @@ public struct StructTest
 
 
 //}
+
 
 
 

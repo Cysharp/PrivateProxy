@@ -13,7 +13,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PrivateProxy.Generator", "s
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleAppNet8", "sandbox\ConsoleAppNet8\ConsoleAppNet8.csproj", "{F1349485-DCA7-4F9B-B434-DC6950988E7A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrivateProxy.Tests", "tests\PrivateProxy.Tests\PrivateProxy.Tests.csproj", "{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PrivateProxy.Tests", "tests\PrivateProxy.Tests\PrivateProxy.Tests.csproj", "{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClassLibrary", "sandbox\ClassLibrary\ClassLibrary.csproj", "{23947225-D1A8-4097-B758-731E1D375CB0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23947225-D1A8-4097-B758-731E1D375CB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23947225-D1A8-4097-B758-731E1D375CB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23947225-D1A8-4097-B758-731E1D375CB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23947225-D1A8-4097-B758-731E1D375CB0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -41,6 +47,7 @@ Global
 		{57EEAB5C-EDFE-4186-8101-8B969A57CB6F} = {F2E8F22F-A91D-457A-932A-E3647B964A94}
 		{F1349485-DCA7-4F9B-B434-DC6950988E7A} = {7753D4E4-4967-4ED2-97CC-5B1A71B53BCD}
 		{06BE6B13-4795-4E98-B1F4-BE3D10270C6C} = {FB22D44B-8937-4C9F-92A6-5A0A4190D1A2}
+		{23947225-D1A8-4097-B758-731E1D375CB0} = {7753D4E4-4967-4ED2-97CC-5B1A71B53BCD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {800D301B-C4F2-454D-87B9-BA3A404A9937}

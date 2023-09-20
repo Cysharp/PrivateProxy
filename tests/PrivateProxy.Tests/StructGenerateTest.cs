@@ -12,8 +12,6 @@ namespace PrivateProxy.Tests;
 
 public struct PrivateStructTarget
 {
-    // TODO: use internal type for return or parameter(detect and should return object).
-
     public PrivateStructTarget(int readOnlyField)
     {
         this.readOnlyField = readOnlyField;
@@ -87,10 +85,6 @@ public struct PrivateStructTarget
         return ref x;
     }
 
-    // TODO: static
-
-
-
     // checker
     public (int field, int readOnlyField) GetFields() => (field, readOnlyField);
     public (int property, int getOnlyProperty, int getOnlyPrivate, int setOnlyPrivate, int setOnlyProperty) GetProperties() => (Property, GetOnlyProperty, GetOnlyPrivateProperty, SetOnlyPrivateProperty, _setOnlyPropertyField);
@@ -98,8 +92,63 @@ public struct PrivateStructTarget
     public (int refGetOnlyPropertyField, int _refReadOnlyGetOnlyPropertyField) GetRefProperties() => (_refGetOnlyPropertyField, _refReadOnlyGetOnlyPropertyField);
 
 
+    // static
 
-    
+    static int staticField;
+    static readonly int staticReadOnlyField = 4444;
+
+
+    static int StaticProperty { get; set; }
+    static int StaticGetOnlyProperty { get; } = 5000;
+    public static int StaticGetOnlyPrivateProperty { private get; set; }
+    public static int StaticSetOnlyPrivateProperty { get; private set; }
+
+    static int _StaticsetOnlyPropertyField;
+    private static int StaticSetOnlyProperty { set => _StaticsetOnlyPropertyField = value; }
+
+    static int _StaticrefGetOnlyPropertyField;
+    private static ref int StaticRefGetOnlyProperty => ref _StaticrefGetOnlyPropertyField;
+
+    static int _StaticrefReadOnlyGetOnlyPropertyField;
+    private static ref readonly int StaticRefReadOnlyGetOnlyProperty => ref _StaticrefReadOnlyGetOnlyPropertyField;
+
+
+    public static int staticvoidMethodCalledCount;
+
+    private static void StaticVoidMethod()
+    {
+        staticvoidMethodCalledCount += 1;
+    }
+
+    static int StaticReturnMethod() => 10;
+
+    static int StaticParameterMethod1(int x) => x;
+
+    static int StaticParameterMethod2(int x, int y) => x + y;
+
+    static void StaticVoidParameter(int x, int y)
+    {
+        staticvoidMethodCalledCount = x + y;
+    }
+
+    static void StaticRefOutInMethod(in int x, ref int y, out int z, ref readonly int xyz)
+    {
+        y = 40;
+        z = 9999;
+        staticvoidMethodCalledCount = x + xyz;
+    }
+
+    static int _StaticrefReturnMethodField;
+    static ref int StaticRefReturnMethod() => ref _StaticrefReturnMethodField;
+
+    static int _StaticrefReadOnlyReturnMethodField;
+    static ref readonly int StaticRefReadOnlyReturnMethod() => ref _StaticrefReadOnlyReturnMethodField;
+
+    static ref int StaticRefReturnMethodParameter(ref int x)
+    {
+        return ref x;
+    }
+
 
 }
 
@@ -206,18 +255,75 @@ public class StructGenerateTest
     [Fact]
     public void StaticField()
     {
-        // TODO:
+        PrivateStructTargetStructProxy.staticField = 9999;
+        PrivateStructTargetStructProxy.staticField.Should().Be(9999);
+        PrivateStructTargetStructProxy.staticReadOnlyField.Should().Be(4444);
     }
 
     [Fact]
     public void StaticProperty()
     {
-        // TODO:
+        PrivateStructTargetStructProxy.StaticProperty = 9999;
+        PrivateStructTargetStructProxy.StaticGetOnlyPrivateProperty = 8888;
+        PrivateStructTargetStructProxy.StaticSetOnlyPrivateProperty = 7777;
+
+        PrivateStructTargetStructProxy.StaticSetOnlyProperty = 6666;
+
+        ref var refGet = ref PrivateStructTargetStructProxy.StaticRefGetOnlyProperty;
+        ref readonly var refRead = ref PrivateStructTargetStructProxy.StaticRefReadOnlyGetOnlyProperty;
+
+        refGet = 5555;
+
+        PrivateStructTargetStructProxy._StaticrefReadOnlyGetOnlyPropertyField = 5000;
+
+        PrivateStructTargetStructProxy.StaticProperty.Should().Be(9999);
+        PrivateStructTargetStructProxy.StaticGetOnlyPrivateProperty.Should().Be(8888);
+        PrivateStructTargetStructProxy.StaticSetOnlyPrivateProperty.Should().Be(7777);
+        PrivateStructTargetStructProxy.StaticGetOnlyProperty.Should().Be(5000);
+
+        PrivateStructTargetStructProxy._StaticsetOnlyPropertyField.Should().Be(6666);
+
+        PrivateStructTargetStructProxy.StaticRefGetOnlyProperty.Should().Be(5555);
+
+        PrivateStructTargetStructProxy._StaticrefGetOnlyPropertyField.Should().Be(5555);
+        PrivateStructTargetStructProxy._StaticrefReadOnlyGetOnlyPropertyField.Should().Be(5000).And.Be(refRead);
     }
 
     [Fact]
     public void StaticMethod()
     {
-        // TODO:
+        PrivateStructTargetStructProxy.StaticVoidMethod();
+        PrivateStructTargetStructProxy.StaticVoidMethod();
+        PrivateStructTargetStructProxy.StaticVoidMethod();
+
+        PrivateStructTarget.staticvoidMethodCalledCount.Should().Be(3);
+
+
+        PrivateStructTargetStructProxy.StaticReturnMethod().Should().Be(10);
+        PrivateStructTargetStructProxy.StaticParameterMethod1(9999).Should().Be(9999);
+
+        PrivateStructTargetStructProxy.StaticParameterMethod2(10, 20).Should().Be(30);
+
+        PrivateStructTargetStructProxy.StaticVoidParameter(10, 20);
+        PrivateStructTarget.staticvoidMethodCalledCount.Should().Be(30);
+
+        var y = 0;
+        var zz = 20;
+        PrivateStructTargetStructProxy.StaticRefOutInMethod(10, ref y, out var z, in zz);
+        y.Should().Be(40);
+        z.Should().Be(9999);
+        PrivateStructTarget.staticvoidMethodCalledCount.Should().Be(30); // x + xyz
+
+        PrivateStructTargetStructProxy.StaticRefReturnMethod() = 1111;
+        PrivateStructTargetStructProxy._StaticrefReturnMethodField.Should().Be(1111);
+
+        PrivateStructTargetStructProxy._StaticrefReadOnlyReturnMethodField = 99999;
+        PrivateStructTargetStructProxy.StaticRefReadOnlyReturnMethod().Should().Be(99999);
+
+        var zzzzz = 999;
+        ref var xxxxx = ref PrivateStructTargetStructProxy.StaticRefReturnMethodParameter(ref zzzzz);
+        xxxxx.Should().Be(999);
+        xxxxx = 111;
+        zzzzz.Should().Be(111);
     }
 }
