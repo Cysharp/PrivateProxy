@@ -78,15 +78,15 @@ namespace PrivateProxy
 
     static void Emit(SourceProductionContext context, GeneratorAttributeSyntaxContext source)
     {
-        if (!Verify(context, (TypeDeclarationSyntax)source.TargetNode, source.TargetSymbol))
-        {
-            return;
-        }
-
         var attr = source.Attributes[0]; // allowMultiple:false
         GetAttributeParameters(attr, out var targetType, out var kind);
 
         var members = GetMembers(targetType, kind);
+
+        if (!Verify(context, (TypeDeclarationSyntax)source.TargetNode, (INamedTypeSymbol)source.TargetSymbol, targetType))
+        {
+            return;
+        }
 
         if (members.Length == 0)
         {
@@ -198,27 +198,63 @@ namespace PrivateProxy
         return list.ToArray();
     }
 
-    static bool Verify(SourceProductionContext context, TypeDeclarationSyntax typeSyntax, ISymbol targetType)
+    static bool Verify(SourceProductionContext context, TypeDeclarationSyntax typeSyntax, INamedTypeSymbol proxyType, INamedTypeSymbol targetType)
     {
+        // Type Rule
+        // ProxyClass: class -> allows class or struct
+        //           : struct -> allows ref struct
+
         var hasError = false;
 
         // require partial
         if (!typeSyntax.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
         {
-            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.MustBePartial, typeSyntax.Identifier.GetLocation(), targetType.Name));
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.MustBePartial, typeSyntax.Identifier.GetLocation(), proxyType.Name));
             hasError = true;
         }
 
-        // TODO: rule
-        // ProxyClass: class -> allows class or struct
-        //           : struct -> allows ref struct
-        // target Type can not be `ref struct`
+        // not allow readonly struct
+        if (proxyType.IsValueType && proxyType.IsReadOnly)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.NotAllowReadOnly, typeSyntax.Identifier.GetLocation(), proxyType.Name));
+            hasError = true;
+        }
 
-        // TODO: not allow readonly struct
-        // TODO: struct always must be `ref struct`
-        // TODO:target is ref struct ,must be ref struct.
-        // TODO:target is struct and return ref
-        // TODO:generics don't support
+        // class, not allow ref struct
+        if (targetType.IsReferenceType && proxyType.IsRefLikeType)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.ClassNotAllowRefStruct, typeSyntax.Identifier.GetLocation(), proxyType.Name));
+            hasError = true;
+        }
+
+        // struct, not allow class or struct(only allows ref struct)
+        if (targetType.IsValueType)
+        {
+            if (proxyType.IsReferenceType)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.StructNotAllowClass, typeSyntax.Identifier.GetLocation(), proxyType.Name));
+                hasError = true;
+            }
+            else if (proxyType.IsValueType && !proxyType.IsRefLikeType)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.StructNotAllowStruct, typeSyntax.Identifier.GetLocation(), proxyType.Name));
+                hasError = true;
+            }
+        }
+
+        // target type not allow `ref struct`
+        if (targetType.IsValueType && targetType.IsRefLikeType)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.RefStructNotSupported, typeSyntax.Identifier.GetLocation()));
+            hasError = true;
+        }
+
+        // generics is not supported
+        if (targetType.IsGenericType)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.GenericsNotSupported, typeSyntax.Identifier.GetLocation()));
+            hasError = true;
+        }
 
         return !hasError;
     }

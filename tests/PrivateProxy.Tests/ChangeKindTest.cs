@@ -27,7 +27,7 @@ namespace PrivateProxy.Tests
     {
         string GenerateCode(PrivateProxyGenerateKinds generateKinds)
         {
-            var kind = string.Join(" | ", generateKinds.ToString().Split('|').Select(x => "PrivateProxyGenerateKinds." + x.Trim()));
+            var kind = string.Join(" | ", generateKinds.ToString().Split(',').Select(x => "PrivateProxyGenerateKinds." + x.Trim()));
 
             var codes = CSharpGeneratorRunner.RunGeneratorCode($$"""
 using PrivateProxy;
@@ -74,6 +74,85 @@ public partial struct KindTargetProxy { }
             Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(4);
         }
 
-        // TODO: method, property, field
+        [Fact]
+        public void MethodOnly()
+        {
+            var all = GenerateCode(PrivateProxyGenerateKinds.Method);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(1);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Static | PrivateProxyGenerateKinds.Method);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(0);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Method);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(0);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(1);
+        }
+
+        [Fact]
+        public void PropertyOnly()
+        {
+            var all = GenerateCode(PrivateProxyGenerateKinds.Property);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(4);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(2);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Static | PrivateProxyGenerateKinds.Property);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(0);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Property);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(0);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(2);
+        }
+
+        [Fact]
+        public void FieldOnly()
+        {
+            var all = GenerateCode(PrivateProxyGenerateKinds.Field);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(1);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Static | PrivateProxyGenerateKinds.Field);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(0);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Field);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(1);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(0);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(1);
+        }
+
+        [Fact]
+        public void Mix()
+        {
+            var all = GenerateCode(PrivateProxyGenerateKinds.Field | PrivateProxyGenerateKinds.Method);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(4);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(2);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Static| PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Field | PrivateProxyGenerateKinds.Method);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(4);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(2);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Static | PrivateProxyGenerateKinds.Field | PrivateProxyGenerateKinds.Method);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(0);
+
+            all = GenerateCode(PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Field | PrivateProxyGenerateKinds.Method);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(2);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(0);
+            Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(2);
+        }
     }
 }
