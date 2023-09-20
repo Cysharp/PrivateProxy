@@ -1,7 +1,7 @@
 # PrivateProxy
 [![GitHub Actions](https://github.com/Cysharp/PrivateProxy/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/PrivateProxy/actions) [![Releases](https://img.shields.io/github/release/Cysharp/PrivateProxy.svg)](https://github.com/Cysharp/PrivateProxy/releases)
 
-Source Generator and .NET 8 [UnsafeAccessor](https://learn.microsoft.com/bs-latn-ba/dotnet/api/system.runtime.compilerservices.unsafeaccessorattribute) based high-performance strong-typed private accessor for unit testing and runtime.
+Source Generator and .NET 8 [UnsafeAccessor](https://learn.microsoft.com/bs-latn-ba/dotnet/api/system.runtime.compilerservices.unsafeaccessorattribute) based high-performance strongly-typed private accessor for unit testing and runtime.
 
 `[GeneratePrivateProxy(typeof(TargetType))]` generates accessor proxy.
 
@@ -51,6 +51,7 @@ Generated code is fully typed, you can access private filed via IntelliSense and
 
 * No performance penalty, it can be used not only for unit testing but also for runtime
 * No runtime dependency(all codes are included in source generator)
+* Private accessors are strongly-typed
 * Supports both instance and static fields, properties, and methods
 * Supports `ref`, `out`, `in`, and `ref readonly` method parameters
 * Supports `readonly` field and property
