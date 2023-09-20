@@ -13,7 +13,7 @@ on:
         type: boolean
 
 jobs:
-  build-dotnet:
+  dotnet-build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -29,19 +29,21 @@ jobs:
       - run: dotnet build -c Release -p:Version=${{ inputs.tag }}
       - run: dotnet test -c Release --no-build
       - run: dotnet pack -c Release --no-build -p:Version=${{ inputs.tag }} -o ./publish
-      - uses: actions/upload-artifact@v3
-        with:
-          name: nuget
-          path: ./publish
+      - run: dotnet nuget push "./publish/*.nupkg" -s https://www.nuget.org/api/v2/package -k ${{ secrets.NUGET_KEY }}
 
   # release
   create-release:
-    needs: [build-dotnet]
-    uses: Cysharp/Actions/.github/workflows/create-release.yaml@main
-    with:
-      dry-run: ${{ inputs.dry-run }}
-      commit-id: ${{ needs.update-packagejson.outputs.sha }}
-      tag: ${{ inputs.tag }}
-      push-tag: true
-      nuget-push: true
-    secrets: inherit
+    needs: [dotnet-build-and-push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Create Releases
+      - uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.GIT_TAG }}
+          release_name: Ver.${{ env.GIT_TAG }}
+          draft: true
+          prerelease: false
