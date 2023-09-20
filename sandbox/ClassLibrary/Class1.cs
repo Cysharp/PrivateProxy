@@ -1,4 +1,8 @@
-﻿using System.Runtime.InteropServices.Marshalling;
+﻿#pragma warning disable CS8604
+#pragma warning disable CS8321
+#pragma warning disable CS0414
+
+using System.Runtime.InteropServices.Marshalling;
 
 namespace ClassLibrary
 {

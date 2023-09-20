@@ -1,4 +1,8 @@
-﻿// using PrivateProxy;
+﻿#pragma warning disable CS8604
+#pragma warning disable CS8321
+#pragma warning disable CS0414
+
+// using PrivateProxy;
 using PrivateProxy;
 using System;
 using System.Collections.Generic;

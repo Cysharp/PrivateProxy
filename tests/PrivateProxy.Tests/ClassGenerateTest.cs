@@ -7,14 +7,6 @@ using System.Runtime.CompilerServices;
 
 namespace PrivateProxy.Tests;
 
-// TODO: test inheritance
-// TODO: check explicit interface member
-// TODO: inheritance class uses new?
-// TODO: struct target allows readonly ref readonly
-// TODO: ref field for ref struct
-// TODO: required?
-// TODO: target record, record struct
-// TODO: return nested
 public class PrivateClassTarget
 {
     public PrivateClassTarget(int readOnlyField)
