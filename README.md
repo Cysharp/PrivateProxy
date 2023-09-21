@@ -1,7 +1,7 @@
 # PrivateProxy
 [![GitHub Actions](https://github.com/Cysharp/PrivateProxy/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/PrivateProxy/actions) [![Releases](https://img.shields.io/github/release/Cysharp/PrivateProxy.svg)](https://github.com/Cysharp/PrivateProxy/releases)
 
-Source Generator and .NET 8 [UnsafeAccessor](https://learn.microsoft.com/bs-latn-ba/dotnet/api/system.runtime.compilerservices.unsafeaccessorattribute) based high-performance strongly-typed private accessor for unit testing and runtime.
+Source Generator and .NET 8 [UnsafeAccessor](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.compilerservices.unsafeaccessorattribute) based high-performance strongly-typed private accessor for unit testing and runtime.
 
 `[GeneratePrivateProxy(typeof(TargetType))]` generates accessor proxy.
 
