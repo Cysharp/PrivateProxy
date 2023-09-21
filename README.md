@@ -54,7 +54,7 @@ Generated code is fully typed, you can access private filed via IntelliSense and
 * No performance penalty, it can be used not only for unit testing but also for runtime
 * No runtime dependency(all codes are included in source generator)
 * Private accessors are strongly-typed
-* Supports both instance and static fields, properties, and methods
+* Supports both instance, static and fields, properties, methods
 * Supports `ref`, `out`, `in`, and `ref readonly` method parameters
 * Supports `readonly` field and property
 * Supports `ref` return
