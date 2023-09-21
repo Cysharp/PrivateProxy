@@ -193,10 +193,14 @@ Limitation
 ---
 Currently, the following features are not supported
 
-* Generics type, see: [dotnet/runtime#89439](https://github.com/dotnet/runtime/issues/89439)
+* Generics type
+  * see: [dotnet/runtime#89439 Implement unbound Generic support for UnsafeAccessorAttribute](https://github.com/dotnet/runtime/issues/89439)
 * ref struct
+  * ref field can not pass to ref method parameter
 * Types from external dll(for example `String`)
+  * Probably, by enabling MetadataImportOptions.All in the Source Generator, it should be possible to read it. However, I haven't been able to find a way to do that. I need help.
 * Non public return/parameter type(ignore generate)
+  * `UnsafeAccessor` requires public type
 
 License
 ---
