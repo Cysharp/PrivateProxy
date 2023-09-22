@@ -62,4 +62,11 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor StaticNotSupported = new(
+        id: "PP008",
+        title: "PrivateProxy does not support static type",
+        messageFormat: "The PrivateProxy does not support static type",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

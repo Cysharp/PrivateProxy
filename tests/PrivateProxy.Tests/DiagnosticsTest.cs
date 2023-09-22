@@ -145,4 +145,20 @@ public class Foo<T>
 public partial class FooPrivateProxy { }
 """);
     }
+
+    [Fact]
+    public void PP008_StaticNotSupported()
+    {
+        Compile(8, """
+using PrivateProxy;
+
+public static class Foo
+{
+    static int x;
+}
+
+[GeneratePrivateProxy(typeof(Foo))]
+public partial class FooPrivateProxy { }
+""");
+    }
 }

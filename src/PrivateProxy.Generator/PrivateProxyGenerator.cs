@@ -256,6 +256,13 @@ namespace PrivateProxy
             hasError = true;
         }
 
+        // static class is not supported
+        if (targetType.IsStatic)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.StaticNotSupported, typeSyntax.Identifier.GetLocation()));
+            hasError = true;
+        }
+
         return !hasError;
     }
 
