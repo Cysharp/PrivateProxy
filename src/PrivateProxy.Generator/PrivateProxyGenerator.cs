@@ -137,7 +137,7 @@ namespace PrivateProxy
         // If only set Static or Instance, generate all member kind
         if (!generateField && !generateProperty && !generateMethod && !generateConstructor)
         {
-            generateField = generateProperty = generateMethod = generateConstructor = true;
+            generateField = generateProperty = generateMethod = true;
         }
         // If only set member kind, generate both static and instance
         if (!generateStatic && !generateInstance)
@@ -196,10 +196,15 @@ namespace PrivateProxy
 
                 if (m.DeclaredAccessibility == Accessibility.Public) continue;
 
-                if ((m.Name == ".ctor" && generateConstructor) || generateMethod)
+                if (m.Name == ".ctor")
                 {
-                    list.Add(new(item));
+                    if (!generateConstructor) continue;
                 }
+                else
+                {
+                    if (!generateMethod) continue;
+                }
+                list.Add(new(item));
             }
         }
         return list.ToArray();

@@ -57,7 +57,7 @@ public partial struct KindTargetProxy { }
         public void All()
         {
             var all = GenerateCode(PrivateProxyGenerateKinds.All);
-            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(8);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(9);
         }
 
         [Fact]
