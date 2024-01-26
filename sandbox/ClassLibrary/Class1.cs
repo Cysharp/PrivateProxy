@@ -2,6 +2,7 @@
 #pragma warning disable CS8321
 #pragma warning disable CS0414
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.Marshalling;
 
 namespace ClassLibrary
@@ -12,6 +13,10 @@ namespace ClassLibrary
         private NestedPrivate _nesterPrivate = new NestedPrivate();
         private NestedPublic _nesterPublic = new NestedPublic();
         private InternalEnum _internalEnum = default;
+
+        MyClass()
+        {
+        }
 
         private void PrivateMethod()
         {

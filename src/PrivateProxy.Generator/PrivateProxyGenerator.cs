@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
@@ -68,12 +69,13 @@ namespace PrivateProxy
     [Flags]
     public enum PrivateProxyGenerateKinds
     {
-        All = 0, // Field | Method | Property | Instance | Static
+        All = 0, // Field | Method | Property | Instance | Static | Constructor
         Field = 1,
         Method = 2,
         Property = 4,
         Instance = 8,
         Static = 16,
+        Constructor = 32,
     }
 
     static void Emit(SourceProductionContext context, GeneratorAttributeSyntaxContext source)
@@ -122,14 +124,15 @@ namespace PrivateProxy
 
         var list = new List<MetaMember>(members.Length);
 
-        kind = (kind == PrivateProxyGenerateKinds.All) ? PrivateProxyGenerateKinds.Field | PrivateProxyGenerateKinds.Method | PrivateProxyGenerateKinds.Property | PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Static : kind;
+        kind = (kind == PrivateProxyGenerateKinds.All) ? PrivateProxyGenerateKinds.Field | PrivateProxyGenerateKinds.Method | PrivateProxyGenerateKinds.Property | PrivateProxyGenerateKinds.Instance | PrivateProxyGenerateKinds.Static | PrivateProxyGenerateKinds.Constructor : kind;
 
         var generateField = kind.HasFlag(PrivateProxyGenerateKinds.Field);
         var generateProperty = kind.HasFlag(PrivateProxyGenerateKinds.Property);
         var generateMethod = kind.HasFlag(PrivateProxyGenerateKinds.Method);
         var generateInstance = kind.HasFlag(PrivateProxyGenerateKinds.Instance);
         var generateStatic = kind.HasFlag(PrivateProxyGenerateKinds.Static);
-
+        var generateConstructor = kind.HasFlag(PrivateProxyGenerateKinds.Constructor);
+        
         // If only set Static or Instance, generate all member kind
         if (!generateField && !generateProperty && !generateMethod)
         {
@@ -143,7 +146,7 @@ namespace PrivateProxy
 
         foreach (var item in members)
         {
-            if (!item.CanBeReferencedByName) continue;
+            if (!item.CanBeReferencedByName && (item.Name != ".ctor" || !generateConstructor)) continue;
 
             if (item.IsStatic && !generateStatic) continue;
             if (!item.IsStatic && !generateInstance) continue;
@@ -194,7 +197,6 @@ namespace PrivateProxy
                 list.Add(new(item));
             }
         }
-
         return list.ToArray();
     }
 
@@ -345,19 +347,31 @@ namespace PrivateProxy
 
                     code.AppendLine("    }"); // close property
                     break;
+                case MemberKind.Constructor:
                 case MemberKind.Method:
                     var parameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToParameterPrefix()}{x.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {x.Name}"));
                     var parametersWithComma = (parameters != "") ? ", " + parameters : "";
                     var useParameters = string.Join(", ", item.MethodParameters.Select(x => $"{x.RefKind.ToUseParameterPrefix()}{x.Name}"));
                     if (useParameters != "") useParameters = ", " + useParameters;
 
-                    code.AppendLine($$"""
+                    if (item.MemberKind == MemberKind.Constructor)
+                    {
+                        code.AppendLine($$"""
+    [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
+    public static extern {{targetTypeFullName}} Create{{targetType.Name}}({{parameters}});
+
+""");
+                    }
+                    else
+                    {
+                        code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.{{staticCode}}Method, Name = "{{item.Name}}")]
     static extern {{refReturn}}{{item.MemberTypeFullName}} __{{item.Name}}__({{refStruct}}{{targetTypeFullName}} target{{parametersWithComma}});
     
     public {{staticCode2}}{{refReturn}}{{readonlyCode}}{{item.MemberTypeFullName}} {{item.Name}}({{parameters}}) => {{refReturn}}__{{item.Name}}__({{targetInstance}}{{useParameters}});
 
 """);
+                    }
                     break;
                 default:
                     break;
