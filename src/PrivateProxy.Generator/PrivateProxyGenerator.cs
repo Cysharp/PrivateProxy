@@ -155,18 +155,16 @@ namespace PrivateProxy
             // add field/property/method
             if (generateField && item is IFieldSymbol f)
             {
-                // return type is not public, don't generate
-                if (f.Type.DeclaredAccessibility != Accessibility.Public) continue;
-
                 // public member don't generate
                 if (f.DeclaredAccessibility == Accessibility.Public) continue;
+                
+                // return type can not access, don't generate
+                if (!CanExpose(f.Type)) continue;
 
                 list.Add(new(item));
             }
             else if (generateProperty && item is IPropertySymbol p)
             {
-                if (p.Type.DeclaredAccessibility != Accessibility.Public) continue;
-
                 if (p.DeclaredAccessibility == Accessibility.Public)
                 {
                     var getPublic = true;
@@ -182,19 +180,21 @@ namespace PrivateProxy
 
                     if (getPublic && setPublic) continue;
                 }
+                
+                if (!CanExpose(p.Type)) continue;
 
                 list.Add(new(item));
             }
             else if ((generateMethod || generateConstructor) && item is IMethodSymbol m)
             {
-                // both return type and parameter type must be public
-                if (m.ReturnType.DeclaredAccessibility != Accessibility.Public) continue;
+                if (m.DeclaredAccessibility == Accessibility.Public) continue;
+                
+                // both return type and parameter type must be accessible
+                if (!CanExpose(m.ReturnType)) goto Next;
                 foreach (var parameter in m.Parameters)
                 {
-                    if (parameter.Type.DeclaredAccessibility != Accessibility.Public) continue;
+                    if (!CanExpose(parameter.Type)) goto Next;
                 }
-
-                if (m.DeclaredAccessibility == Accessibility.Public) continue;
 
                 if (m.Name == ".ctor")
                 {
@@ -204,7 +204,10 @@ namespace PrivateProxy
                 {
                     if (!generateMethod) continue;
                 }
+                
                 list.Add(new(item));
+                Next: 
+                ;
             }
         }
         return list.ToArray();
@@ -452,5 +455,31 @@ using System.Runtime.InteropServices;
 
         var sourceCode = sb.ToString();
         context.AddSource($"{fullType}{fileExtension}", sourceCode);
+    }
+    
+    static bool CanExpose(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is IPointerTypeSymbol) return false;
+        
+        if (typeSymbol is IArrayTypeSymbol arrayType)
+        {
+            var elementType = arrayType.ElementType;
+            if (!CanExpose(elementType)) return false;
+            
+            while (elementType is IArrayTypeSymbol nestedArrayType)
+            {
+                if (!CanExpose(elementType)) return false;
+                elementType = nestedArrayType.ElementType;
+            }
+        }
+        
+        if (typeSymbol is INamedTypeSymbol { IsGenericType: true } genericType)
+        {
+            foreach (var t in genericType.TypeArguments)
+            {
+                if (!CanExpose(t)) return false;
+            }
+        }
+        return typeSymbol.DeclaredAccessibility == Accessibility.Public;
     }
 }

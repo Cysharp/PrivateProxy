@@ -11,20 +11,32 @@ public class InternalTarget
 {
     InnerClass innerField = new();
 
-    private InnerClass GetInnerClass() => new InnerClass();
-    
-
-
-    class InnerClass
+    private void Hoge()
     {
     }
+
+    private InnerClass GetInnerClass() => new InnerClass();
+
+    private InternalClass GetInternalClass => new();
+    private InternalClass[] GetInternalArray() => [];
+    private InternalClass[][] GetInternalNestedArray() => [];
+    private Dictionary<int, InternalClass> GetInternalGeneric => [];
+    
+    private NotApplicableClass GetNotApplicable() => new();
+    private NotApplicableClass[] GetNotApplicableArray() => [];
+    private NotApplicableClass[][] GetNotApplicableNestedArray() => [];
+    private Dictionary<int, NotApplicableClass> GetNotApplicableGeneric => [];
+
+    class InnerClass;
 }
 
+internal class InternalClass;
+class NotApplicableClass;
 
 [GeneratePrivateProxy(typeof(InternalTarget))]
 public partial struct InnerTargetProxy;
 
-
 public class GenerateInternalTest
+
 {
 }
