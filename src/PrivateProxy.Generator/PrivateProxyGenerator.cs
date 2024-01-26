@@ -358,7 +358,7 @@ namespace PrivateProxy
                     {
                         code.AppendLine($$"""
     [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
-    public static extern {{targetTypeFullName}} Create{{targetType.Name}}({{parameters}});
+    public static extern {{targetTypeFullName}} Create{{targetType.Name}}FromConstructor({{parameters}});
 
 """);
                     }
