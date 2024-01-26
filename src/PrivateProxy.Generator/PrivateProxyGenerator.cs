@@ -55,12 +55,13 @@ namespace PrivateProxy
     [Flags]
     internal enum PrivateProxyGenerateKinds
     {
-        All = 0, // Field | Method | Property | Instance | Static
+        All = 0, // Field | Method | Property | Instance | Static | Constructor
         Field = 1,
         Method = 2,
         Property = 4,
         Instance = 8,
         Static = 16,
+        Constructor = 32,
     }
 }
 """);
@@ -134,9 +135,9 @@ namespace PrivateProxy
         var generateConstructor = kind.HasFlag(PrivateProxyGenerateKinds.Constructor);
         
         // If only set Static or Instance, generate all member kind
-        if (!generateField && !generateProperty && !generateMethod)
+        if (!generateField && !generateProperty && !generateMethod && !generateConstructor)
         {
-            generateField = generateProperty = generateMethod = true;
+            generateField = generateProperty = generateMethod = generateConstructor = true;
         }
         // If only set member kind, generate both static and instance
         if (!generateStatic && !generateInstance)
@@ -146,7 +147,7 @@ namespace PrivateProxy
 
         foreach (var item in members)
         {
-            if (!item.CanBeReferencedByName && (item.Name != ".ctor" || !generateConstructor)) continue;
+            if (!item.CanBeReferencedByName && item.Name != ".ctor") continue;
 
             if (item.IsStatic && !generateStatic) continue;
             if (!item.IsStatic && !generateInstance) continue;
@@ -184,7 +185,7 @@ namespace PrivateProxy
 
                 list.Add(new(item));
             }
-            else if (generateMethod && item is IMethodSymbol m)
+            else if ((generateMethod || generateConstructor) && item is IMethodSymbol m)
             {
                 // both return type and parameter type must be public
                 if (m.ReturnType.DeclaredAccessibility != Accessibility.Public) continue;
@@ -194,7 +195,11 @@ namespace PrivateProxy
                 }
 
                 if (m.DeclaredAccessibility == Accessibility.Public) continue;
-                list.Add(new(item));
+
+                if ((m.Name == ".ctor" && generateConstructor) || generateMethod)
+                {
+                    list.Add(new(item));
+                }
             }
         }
         return list.ToArray();

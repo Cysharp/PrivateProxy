@@ -13,8 +13,6 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 
-
-
 public class Sample
 {
     int _field1;
