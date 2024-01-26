@@ -22,16 +22,10 @@ public class InternalTarget
     private InternalClass[][] GetInternalNestedArray() => [];
     private Dictionary<int, InternalClass> GetInternalGeneric => [];
     
-    private NotApplicableClass GetNotApplicable() => new();
-    private NotApplicableClass[] GetNotApplicableArray() => [];
-    private NotApplicableClass[][] GetNotApplicableNestedArray() => [];
-    private Dictionary<int, NotApplicableClass> GetNotApplicableGeneric => [];
-
     class InnerClass;
 }
 
 internal class InternalClass;
-class NotApplicableClass;
 
 [GeneratePrivateProxy(typeof(InternalTarget))]
 public partial struct InnerTargetProxy;

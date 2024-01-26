@@ -480,6 +480,7 @@ using System.Runtime.InteropServices;
                 if (!CanExpose(t)) return false;
             }
         }
-        return typeSymbol.DeclaredAccessibility == Accessibility.Public;
+        return typeSymbol.DeclaredAccessibility == Accessibility.Public ||
+               (typeSymbol.DeclaredAccessibility == Accessibility.NotApplicable && typeSymbol is IArrayTypeSymbol);
     }
 }
