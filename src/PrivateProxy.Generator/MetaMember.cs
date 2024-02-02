@@ -5,7 +5,7 @@ namespace PrivateProxy.Generator;
 
 public enum MemberKind
 {
-    Field, Property, Method
+    Field, Property, Method, Constructor
 }
 
 public class MetaMember
@@ -82,11 +82,10 @@ public class MetaMember
             // ref readonly int Method3() => ref refField;
             // readonly ref int Method4() => ref refField;
             // readonly ref readonly int Method5() => ref refField;
-
-
+            
             this.MemberType = m.ReturnType;
             this.MethodParameters = m.Parameters;
-            this.MemberKind = MemberKind.Method;
+            this.MemberKind = m.Name == ".ctor" ? MemberKind.Constructor : MemberKind.Method;
 
             (this.IsRefReturn, this.IsRequireReadOnly) = (m.ReturnsByRef, m.ReturnsByRefReadonly) switch
             {

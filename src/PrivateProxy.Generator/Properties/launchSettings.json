@@ -2,7 +2,7 @@
   "profiles": {
     "Profile 1": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\..\\sandbox\\ConsoleAppNet8\\ConsoleAppNet8.csproj"
+      "targetProject": "../../sandbox/ConsoleAppNet8/ConsoleAppNet8.csproj"
     }
   }
 }

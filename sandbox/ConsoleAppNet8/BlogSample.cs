@@ -13,16 +13,23 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 
-
-
 public class Sample
 {
     int _field1;
     int _field2;
     public int PrivateProperty { get; private set; }
     int PrivateAdd(int x, int y) => x + y;
-}
 
+    Sample()
+    {
+    }
+
+    Sample(int x, int y)
+    {
+        _field1 = x;
+        _field2 = y;
+    }
+}
 
 [GeneratePrivateProxy(typeof(Sample))]
 public partial struct SampleProxy;

@@ -60,8 +60,9 @@ Generated code is fully typed, you can access private filed via IntelliSense and
 * Supports `readonly` field and property
 * Supports `ref` return
 * Supports mutable struct
+* Supports instance constructor
 
-For example, this is the mutable struct and static, ref return sample.
+For example, this is the mutable struct and static, ref return, and constructor sample.
 
 ```csharp
 using PrivateProxy;
@@ -73,6 +74,9 @@ public struct MutableStructSample
 
     // static and ref sample
     static ref int GetInstanceCounter(ref MutableStructSample sample) => ref sample._counter;
+    
+    // constructor sample
+    MutalbeStructSample(int x, int y) { /* ... */ }
 }
 
 // use ref partial struct
@@ -93,6 +97,9 @@ ref var counter = ref MutableStructSampleProxy.GetInstanceCounter(ref sample);
 Console.WriteLine(counter); // 3
 counter = 9999;
 Console.WriteLine(proxy._counter); // 9999
+
+// call private constructor and create instance.
+var sample = MutableStructSampleProxy.CreateMutableStructFromConstructor(111, 222);
 ```
 
 Installation
@@ -124,7 +131,7 @@ public class/* struct */ SupportTarget
     private ref readonly int RefReadOnlyGetOnlyProperty => ref field;
 
     // method
-    private void VoidMethod() => { }
+    private void VoidMethod() { }
     private int ReturnMethod() => field;
     private int ParameterMethod(int x, int y) => x + y;
     private void RefOutInMethod(in int x, ref int y, out int z, ref readonly int xyz) { z = field; }
@@ -148,6 +155,10 @@ public class/* struct */ SupportTarget
     static ref int StaticRefReturnMethod() => ref staticField;
     static ref readonly int StaticRefReadOnlyReturnMethod() => ref staticField;
     static ref int StaticRefReturnMethodParameter() => ref staticField;
+    
+    // constructor
+    SupportTarget() { }
+    SupportTarget(int x, int y) { }
 }
 ```
 
@@ -181,12 +192,13 @@ public GeneratePrivateProxyAttribute(Type target, PrivateProxyGenerateKinds gene
 [Flags]
 internal enum PrivateProxyGenerateKinds
 {
-    All = 0, // Field | Method | Property | Instance | Static
+    All = 0, // Field | Method | Property | Instance | Static | Constructor
     Field = 1,
     Method = 2,
     Property = 4,
     Instance = 8,
     Static = 16,
+    Constructor = 32,
 }
 ```
 

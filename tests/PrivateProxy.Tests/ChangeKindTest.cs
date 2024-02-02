@@ -41,6 +41,8 @@ public class KindTarget
     static private int staticField;
     static private int StaticProperty { get; set; }
     static private int StaticMethod() => 3;
+    
+    private KindTarget(int x) { }
 }
 
 [GeneratePrivateProxy(typeof(KindTarget), {{kind}})]
@@ -55,7 +57,7 @@ public partial struct KindTargetProxy { }
         public void All()
         {
             var all = GenerateCode(PrivateProxyGenerateKinds.All);
-            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(8);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(9);
         }
 
         [Fact]
@@ -130,6 +132,13 @@ public partial struct KindTargetProxy { }
             Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.Static.+\]").Should().Be(0);
             Regex.Count(all, @"\[UnsafeAccessor\(UnsafeAccessorKind.(?!Static).+\]").Should().Be(1);
         }
+
+        [Fact]
+        public void ConstructorOnly()
+        {
+            var all = GenerateCode(PrivateProxyGenerateKinds.Constructor);
+            Regex.Count(all, @"\[UnsafeAccessor.+\]").Should().Be(1);
+        } 
 
         [Fact]
         public void Mix()
