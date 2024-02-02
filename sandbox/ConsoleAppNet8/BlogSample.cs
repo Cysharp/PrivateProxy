@@ -53,20 +53,17 @@ public static class Calle
 {
     public static void Foo()
     {
-var sample = new MutableStructSample();
-var proxy = sample.AsPrivateProxy();
-proxy.Increment();
-proxy.Increment();
-proxy.Increment();
+        var sample = new MutableStructSample();
+        var proxy = sample.AsPrivateProxy();
+        proxy.Increment();
+        proxy.Increment();
+        proxy.Increment();
 
 // call private static method.
-ref var counter = ref MutableStructSampleProxy.GetInstanceCounter(ref sample);
+        ref var counter = ref MutableStructSampleProxy.GetInstanceCounter(ref sample);
 
-Console.WriteLine(counter); // 3
-counter = 9999;
-Console.WriteLine(proxy._counter); // 9999
+        Console.WriteLine(counter); // 3
+        counter = 9999;
+        Console.WriteLine(proxy._counter); // 9999
     }
 }
-
-
-
