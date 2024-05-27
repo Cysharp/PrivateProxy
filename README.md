@@ -1,3 +1,5 @@
+[!Important] The current Roslyn/Source Generator has limitations in accessing private members of referenced projects. Moreover, accessing private members can lead to situations where it works fine in the IDE but fails during the build process. For more details, please refer to the Roslyn issue, [MetadataImportOptions.All doesn't work in source generators?](https://github.com/dotnet/roslyn/issues/72369). To avoid confusion, I will archive this until the relationship between Source Generators and private members is improved.
+
 # PrivateProxy
 [![GitHub Actions](https://github.com/Cysharp/PrivateProxy/workflows/Build-Debug/badge.svg)](https://github.com/Cysharp/PrivateProxy/actions) [![Releases](https://img.shields.io/github/release/Cysharp/PrivateProxy.svg)](https://github.com/Cysharp/PrivateProxy/releases)
 [![NuGet package](https://img.shields.io/nuget/v/PrivateProxy.svg)](https://nuget.org/packages/PrivateProxy)
